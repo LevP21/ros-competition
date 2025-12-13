@@ -1,6 +1,8 @@
 # ros-competition
+
 ---
-### Порядок запуска
+
+### Порядок сборки
 В файле `ros-competition/src/my_robot/robot_bringup/worlds/course.sdf пути из блока <include>` заменить на
 `<path_to_folder>/ros-competition/install/robot_bringup/share/robot_bringup/worlds/<object_name>`
 
@@ -18,3 +20,21 @@ source <path_to_folder>/ros-competition/install/local_setup.bash
 Для появления робота перед различными испытаниями менять координаты в файле `ros-competition/src/my_robot/robot_bringup/launch/autorace_2025.launch.py` в соответствии с комментариями
 
 После этого не забыть пересобрать пакет
+
+---
+
+### Порядок запуска
+
+```bash
+ros2 launch robot_bringup autorace_2025.launch.py
+```
+
+```bash
+ros2 run autorace_core_PIVO autorace_core
+```
+
+Для запуска всех испытаний
+
+```bash
+ros2 run referee_console mission_autorace_2025_referee
+```
