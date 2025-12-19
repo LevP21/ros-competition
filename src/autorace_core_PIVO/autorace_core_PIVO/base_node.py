@@ -22,6 +22,8 @@ class PID:
         self._int = 0.0
         self._last_time = 0.0
         self._now = 0.0
+        self.started = False
+
 
     def reset(self):
         self._last_error = 0.0
@@ -154,7 +156,7 @@ class BaseNode(Node):
 
         # PID & speed params
         self.kp = 4.0
-        self.ki = 0.05
+        self.ki = 0.0
         self.kd = 1.5
         self.max_angular = 1.2
 
@@ -172,7 +174,11 @@ class BaseNode(Node):
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
 
         #! Путь для записи видео
-        self.out = cv2.VideoWriter("/mnt/d/ros/competition/output.mp4", fourcc, 30, (848, 480))
+        self.out = cv2.VideoWriter("/home/ilya/Documents/ros-competition/video/output.mp4", fourcc, 30, (848, 480))
+
+        self.green_lower = np.array([40, 80, 80])
+        self.green_upper = np.array([80, 255, 255])
+
 
     
     def clock_callback(self, msg: Clock):
@@ -207,6 +213,18 @@ class BaseNode(Node):
         self._cv_steer(msg)
 
 
+    def _detect_green_light(self, image, min_area=1500):
+        hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+        green_mask = cv2.inRange(hsv, self.green_lower, self.green_upper)
+
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+        green_mask = cv2.morphologyEx(green_mask, cv2.MORPH_CLOSE, kernel)
+
+        green_area = np.count_nonzero(green_mask)
+
+        return green_area > min_area
+
+
     def _cv_steer(self, msg):
         try:
             cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
@@ -235,34 +253,48 @@ class BaseNode(Node):
         yellow_mask = cv2.morphologyEx(yellow_mask, cv2.MORPH_CLOSE, kernel)
         white_mask = cv2.morphologyEx(white_mask, cv2.MORPH_CLOSE, kernel)
 
-        # Compute target and error
-        x_target = self._compute_lane_target(roi, min_area=2000)
+        if self._detect_green_light(cv_image):
 
-        x_target = x_target - self.beta * (x_target - self.last_x_target)
-        self.last_x_target = x_target
+            # Compute target and error
+            x_target = self._compute_lane_target(roi, min_area=2000)
 
-        image_center_x = w / 2.0 
-        error_px = x_target - image_center_x
-        norm_error = error_px / (w / 2.0)
+            x_target = x_target - self.beta * (x_target - self.last_x_target)
+            self.last_x_target = x_target
 
-        # square_error = error_px * abs(error_px) / (w / 2.0)
+            image_center_x = w / 2.0 
+            error_px = x_target - image_center_x
+            norm_error = error_px / (w / 2.0)
 
-        ang = self.pid.compute(norm_error)
+            # square_error = error_px * abs(error_px) / (w / 2.0)
 
-        # Compute forward speed with penalties
-        steering_penalty = min(abs(ang) * self.speed_reduction_factor, 1.0)
-        edge_penalty = max(0.0, abs(norm_error) - 0.7)
-        edge_penalty = min(edge_penalty, 1.0)
+            ang = self.pid.compute(norm_error)
 
-        speed = self.max_speed * (1.0 - steering_penalty - edge_penalty)
-        speed = max(min(speed, self.max_speed), self.min_speed)
+            # Compute forward speed with penalties
+            steering_penalty = min(abs(ang) * self.speed_reduction_factor, 1.0)
+            edge_penalty = max(0.0, abs(norm_error) - 0.7)
+            edge_penalty = min(edge_penalty, 1.0)
 
-        # Publish Twist
-        twist = Twist()
-        twist.linear.x = float(speed)
+            speed = self.max_speed * (1.0 - steering_penalty - edge_penalty)
+            speed = max(min(speed, self.max_speed), self.min_speed)
 
-        twist.angular.z = float(-ang)
-        self.cmd_pub.publish(twist)
+        #! Publish Twist
+
+        # self.get_logger().info("🟢 START")
+        # twist = Twist()
+        # twist.linear.x = float(speed)
+        # twist.angular.z = float(-ang)
+        # self.cmd_pub.publish(twist)
+
+
+        
+            self.get_logger().info("🟢 START")
+            twist = Twist()
+            twist.linear.x = float(speed)
+            twist.angular.z = float(-ang)
+            self.cmd_pub.publish(twist)
+        else:
+            self.get_logger().info("❌ STOP")
+
 
         # Debug image overlay
         debug = cv_image.copy()
