@@ -22,7 +22,6 @@ class PID:
         self._int = 0.0
         self._last_time = 0.0
         self._now = 0.0
-        self.started = False
 
 
     def reset(self):
@@ -164,13 +163,14 @@ class BaseNode(Node):
         self.min_speed = 0.2
         self.speed_reduction_factor = 0.8
 
-        self.last_x_target = 0.0
+        self.last_x_target = 0.05
         self.beta = 0.15
 
         self.pid = PID(kp=self.kp, ki=self.ki, kd=self.kd, windup_limit=1.0, output_limits=(-self.max_angular, self.max_angular))
 
         self.bridge = CvBridge()
 
+        self.started = False
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
 
         #! Путь для записи видео
@@ -253,7 +253,13 @@ class BaseNode(Node):
         yellow_mask = cv2.morphologyEx(yellow_mask, cv2.MORPH_CLOSE, kernel)
         white_mask = cv2.morphologyEx(white_mask, cv2.MORPH_CLOSE, kernel)
 
+        self.get_logger().info(f"❕ self.started {self.started}")
+
         if self._detect_green_light(cv_image):
+            self.started = True
+
+        
+        if self.started:
 
             # Compute target and error
             x_target = self._compute_lane_target(roi, min_area=2000)
@@ -276,16 +282,6 @@ class BaseNode(Node):
 
             speed = self.max_speed * (1.0 - steering_penalty - edge_penalty)
             speed = max(min(speed, self.max_speed), self.min_speed)
-
-        #! Publish Twist
-
-        # self.get_logger().info("🟢 START")
-        # twist = Twist()
-        # twist.linear.x = float(speed)
-        # twist.angular.z = float(-ang)
-        # self.cmd_pub.publish(twist)
-
-
         
             self.get_logger().info("🟢 START")
             twist = Twist()
