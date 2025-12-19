@@ -261,7 +261,7 @@ class ControlMission(Node):
         elif self.traffic_state == 4: # intersections
             intersection_direction = random.random()
 
-            if intersection_direction < 0.5:
+            if intersection_direction < 1:
                 # Calls a service to spawn the model
                 command = ["gz", "service", "-s", "/world/course/create",
                 "--reqtype", "gz.msgs.EntityFactory",

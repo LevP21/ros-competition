@@ -159,8 +159,8 @@ class BaseNode(Node):
         self.kd = 1.5
         self.max_angular = 1.2
 
-        self.max_speed = 1.0
-        self.min_speed = 0.2
+        self.max_speed = 0.2
+        self.min_speed = 0.1
         self.speed_reduction_factor = 0.8
 
         self.last_x_target = 0.05
@@ -179,6 +179,7 @@ class BaseNode(Node):
         self.green_lower = np.array([40, 80, 80])
         self.green_upper = np.array([80, 255, 255])
 
+        self.x_target = 0
 
     
     def clock_callback(self, msg: Clock):
@@ -211,6 +212,61 @@ class BaseNode(Node):
 
     def color_image_callback(self, msg: Image):
         self._cv_steer(msg)
+
+    def detect_turn_sign(self, image, min_blue_area=500):
+        """
+        Returns:
+            0  - no sign
+            1  - turn right
+            -1  - turn left
+        """
+
+        h, w = image.shape[:2]
+        mid_image = image #[h//4 : 3*h//4, :]
+
+        hsv = cv2.cvtColor(mid_image, cv2.COLOR_BGR2HSV)
+        blue_lower = np.array([95, 120, 70])
+        blue_upper = np.array([130, 255, 255])
+
+        blue_mask = cv2.inRange(hsv, blue_lower, blue_upper)
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+        blue_mask = cv2.morphologyEx(blue_mask, cv2.MORPH_CLOSE, kernel)
+
+        contours, _ = cv2.findContours(
+            blue_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+        )
+
+        for cnt in contours:
+            area = cv2.contourArea(cnt)
+            if area < min_blue_area:
+                continue
+
+            (cx, cy), r = cv2.minEnclosingCircle(cnt)
+            cx, cy, r = int(cx), int(cy), int(r)
+
+            if r < 15:
+                continue
+
+            roi = mid_image[cy - r:cy + r, cx - r:cx + r]
+            if roi.size == 0:
+                continue
+
+            arrow_lower = np.array([80, 80, 80])
+            arrow_upper = np.array([120, 120, 120])
+
+            arrow_mask = cv2.inRange(roi, arrow_lower, arrow_upper)
+
+            h, w = arrow_mask.shape
+            left_pixels = np.count_nonzero(arrow_mask[:, :w // 2])
+            right_pixels = np.count_nonzero(arrow_mask[:, w // 2:])
+
+
+            flag = 1 if right_pixels > left_pixels else -1
+
+            return flag, right_pixels, left_pixels
+
+        return 0, 0, 0
+
 
 
     def _detect_green_light(self, image, min_area=1500):
@@ -261,14 +317,21 @@ class BaseNode(Node):
         
         if self.started:
 
-            # Compute target and error
-            x_target = self._compute_lane_target(roi, min_area=2000)
-
-            x_target = x_target - self.beta * (x_target - self.last_x_target)
-            self.last_x_target = x_target
-
             image_center_x = w / 2.0 
-            error_px = x_target - image_center_x
+
+            sign, right_pixels, left_pixels = self.detect_turn_sign(cv_image, 300)
+            self.x_target = self._compute_lane_target(roi, min_area=2000)
+
+            # if sign != 0:
+                # self.x_target = 350
+                # self.x_target = (self.x_target + (image_center_x - sign * 300)) / 2
+
+            self.get_logger().info(f"{"❕" if sign == 0 else "❗"} sign {sign} L={left_pixels} R={right_pixels }| target {self.x_target}")
+
+            self.x_target = self.x_target - self.beta * (self.x_target - self.last_x_target)
+            self.last_x_target = self.x_target
+
+            error_px = self.x_target - image_center_x
             norm_error = error_px / (w / 2.0)
 
             # square_error = error_px * abs(error_px) / (w / 2.0)
