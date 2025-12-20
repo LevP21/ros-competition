@@ -331,9 +331,7 @@ class BaseNode(Node):
             self.x_target = self._compute_lane_target(roi, min_area=2000)
             image_center_x = w / 2.0 
 
-            # if sign != 0:
-                # self.x_target = 350
-                # self.x_target = (self.x_target + (image_center_x - sign * 300)) / 2
+            self.x_target = self.x_target + self.sign * (image_center_x + self.sign * 100)
 
             self.get_logger().info(f"{"❕" if self.sign == 0 else "❗"} sign {self.sign}| target {self.x_target}")
 
