@@ -255,10 +255,10 @@ class BaseNode(Node):
                 continue
 
             h, w = roi.shape
-            left_pixels = np.count_nonzero(roi[:h // 2, :w // 2])
-            right_pixels = np.count_nonzero(roi[:h // 2, w // 2:])
+            left_pixels = np.count_nonzero(roi[h // 2:, :w // 2])
+            right_pixels = np.count_nonzero(roi[h // 2:, w // 2:])
 
-            flag = 1 if left_pixels > right_pixels else -1
+            flag = 1 if right_pixels > left_pixels else -1
 
             return flag, right_pixels, left_pixels
 
@@ -310,7 +310,6 @@ class BaseNode(Node):
         if self._detect_green_light(cv_image):
             self.started = True
 
-        self.started = True
         if self.started:
 
             tmp_sign, right_pixels, left_pixels = self.detect_turn_sign(cv_image, 300)
