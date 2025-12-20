@@ -1,0 +1,267 @@
+ПРАВЫЙ!!!!
+
+[INFO] [1766222317.537415952] [base_node]: 🟢 START
+[INFO] [1766222317.575374662] [base_node]: ❕ self.started True
+[INFO] [1766222317.578655918] [base_node]: ❗ sign -1 L=1264 R=741| target 402
+[INFO] [1766222317.579179652] [base_node]: 🟢 START
+[INFO] [1766222317.597039248] [base_node]: ❕ self.started True
+[INFO] [1766222317.600042270] [base_node]: ❗ sign -1 L=1248 R=694| target 401
+[INFO] [1766222317.600376207] [base_node]: 🟢 START
+[INFO] [1766222317.668705153] [base_node]: ❕ self.started True
+[INFO] [1766222317.673233017] [base_node]: ❗ sign -1 L=1266 R=689| target 399
+[INFO] [1766222317.673878176] [base_node]: 🟢 START
+[INFO] [1766222317.681278564] [base_node]: ❕ self.started True
+[INFO] [1766222317.684661607] [base_node]: ❗ sign -1 L=1254 R=733| target 398
+[INFO] [1766222317.685027142] [base_node]: 🟢 START
+[INFO] [1766222317.709700018] [base_node]: ❕ self.started True
+[INFO] [1766222317.713034532] [base_node]: ❗ sign -1 L=1243 R=699| target 397
+[INFO] [1766222317.713427957] [base_node]: 🟢 START
+[INFO] [1766222317.778526851] [base_node]: ❕ self.started True
+[INFO] [1766222317.782028768] [base_node]: ❗ sign -1 L=1191 R=659| target 397
+[INFO] [1766222317.782494482] [base_node]: 🟢 START
+[INFO] [1766222317.794109519] [base_node]: ❕ self.started True
+[INFO] [1766222317.797391219] [base_node]: ❗ sign -1 L=1220 R=655| target 397
+[INFO] [1766222317.797827642] [base_node]: 🟢 START
+[INFO] [1766222317.829186141] [base_node]: ❕ self.started True
+[INFO] [1766222317.832254517] [base_node]: ❗ sign -1 L=1184 R=644| target 397
+[INFO] [1766222317.832601738] [base_node]: 🟢 START
+[INFO] [1766222317.860925981] [base_node]: ❕ self.started True
+[INFO] [1766222317.865328705] [base_node]: ❗ sign -1 L=1159 R=616| target 396
+[INFO] [1766222317.866025301] [base_node]: 🟢 START
+[INFO] [1766222317.925262790] [base_node]: ❕ self.started True
+[INFO] [1766222317.929067114] [base_node]: ❗ sign -1 L=1107 R=586| target 395
+[INFO] [1766222317.929504833] [base_node]: 🟢 START
+[INFO] [1766222317.933428850] [base_node]: ❕ self.started True
+[INFO] [1766222317.936969213] [base_node]: ❗ sign -1 L=1106 R=597| target 395
+[INFO] [1766222317.937377506] [base_node]: 🟢 START
+[INFO] [1766222317.973255582] [base_node]: ❕ self.started True
+[INFO] [1766222317.978321471] [base_node]: ❗ sign -1 L=1081 R=581| target 394
+[INFO] [1766222317.979180589] [base_node]: 🟢 START
+[INFO] [1766222318.004169117] [base_node]: ❕ self.started True
+[INFO] [1766222318.008156779] [base_node]: ❗ sign -1 L=1068 R=567| target 394
+[INFO] [1766222318.008883020] [base_node]: 🟢 START
+[INFO] [1766222318.043995655] [base_node]: ❕ self.started True
+[INFO] [1766222318.047311210] [base_node]: ❗ sign -1 L=1048 R=581| target 393
+[INFO] [1766222318.047684968] [base_node]: 🟢 START
+[INFO] [1766222318.071611379] [base_node]: ❕ self.started True
+[INFO] [1766222318.075358889] [base_node]: ❗ sign -1 L=1073 R=583| target 392
+[INFO] [1766222318.075885232] [base_node]: 🟢 START
+[INFO] [1766222318.115574140] [base_node]: ❕ self.started True
+[INFO] [1766222318.120142880] [base_node]: ❗ sign -1 L=1057 R=575| target 391
+[INFO] [1766222318.120739940] [base_node]: 🟢 START
+[INFO] [1766222318.131710540] [base_node]: ❕ self.started True
+[INFO] [1766222318.135136230] [base_node]: ❗ sign -1 L=993 R=552| target 391
+[INFO] [1766222318.135507463] [base_node]: 🟢 START
+[INFO] [1766222318.163327485] [base_node]: ❕ self.started True
+[INFO] [1766222318.166323013] [base_node]: ❗ sign -1 L=1023 R=558| target 391
+[INFO] [1766222318.166671829] [base_node]: 🟢 START
+[INFO] [1766222318.221156854] [base_node]: ❕ self.started True
+[INFO] [1766222318.225035134] [base_node]: ❗ sign -1 L=1022 R=556| target 391
+[INFO] [1766222318.225566170] [base_node]: 🟢 START
+[INFO] [1766222318.238801003] [base_node]: ❕ self.started True
+[INFO] [1766222318.242325389] [base_node]: ❗ sign -1 L=1007 R=559| target 390
+[INFO] [1766222318.242806510] [base_node]: 🟢 START
+[INFO] [1766222318.278386069] [base_node]: ❕ self.started True
+[INFO] [1766222318.281559574] [base_node]: ❗ sign -1 L=958 R=539| target 389
+[INFO] [1766222318.281943252] [base_node]: 🟢 START
+[INFO] [1766222318.317408426] [base_node]: ❕ self.started True
+[INFO] [1766222318.320393221] [base_node]: ❗ sign -1 L=963 R=542| target 388
+[INFO] [1766222318.320751724] [base_node]: 🟢 START
+[INFO] [1766222331.517038672] [base_node]: ❕ self.started True
+[INFO] [1766222331.519733727] [base_node]: ❗ sign -1 L=970 R=539| target 388
+[INFO] [1766222331.520028278] [base_node]: 🟢 START
+[INFO] [1766222331.554499229] [base_node]: ❕ self.started True
+[INFO] [1766222331.557293309] [base_node]: ❗ sign -1 L=966 R=539| target 388
+[INFO] [1766222331.557721857] [base_node]: 🟢 START
+[INFO] [1766222331.613567598] [base_node]: ❕ self.started True
+[INFO] [1766222331.616537415] [base_node]: ❗ sign -1 L=928 R=538| target 388
+[INFO] [1766222331.616878793] [base_node]: 🟢 START
+[INFO] [1766222331.623223723] [base_node]: ❕ self.started True
+[INFO] [1766222331.626384582] [base_node]: ❗ sign -1 L=930 R=531| target 388
+[INFO] [1766222331.626753001] [base_node]: 🟢 START
+[INFO] [1766222331.655428652] [base_node]: ❕ self.started True
+[INFO] [1766222331.658491598] [base_node]: ❗ sign -1 L=943 R=537| target 387
+[INFO] [1766222331.658839393] [base_node]: 🟢 START
+[INFO] [1766222331.720133890] [base_node]: ❕ self.started True
+[INFO] [1766222331.723388832] [base_node]: ❗ sign -1 L=927 R=534| target 386
+[INFO] [1766222331.723978431] [base_node]: 🟢 START
+[INFO] [1766222331.730308556] [base_node]: ❕ self.started True
+[INFO] [1766222331.733058239] [base_node]: ❗ sign -1 L=933 R=536| target 385
+[INFO] [1766222331.733383011] [base_node]: 🟢 START
+[INFO] [1766222331.760837461] [base_node]: ❕ self.started True
+[INFO] [1766222331.763995155] [base_node]: ❗ sign -1 L=898 R=528| target 385
+[INFO] [1766222331.764387371] [base_node]: 🟢 START
+[INFO] [1766222331.816433915] [base_node]: ❕ self.started True
+[INFO] [1766222331.819704847] [base_node]: ❗ sign -1 L=885 R=524| target 385
+[INFO] [1766222331.820062838] [base_node]: 🟢 START
+[INFO] [1766222331.841538098] [base_node]: ❕ self.started True
+[INFO] [1766222331.845220553] [base_node]: ❗ sign -1 L=888 R=525| target 385
+[INFO] [1766222331.845648421] [base_node]: 🟢 START
+[INFO] [1766222331.880416932] [base_node]: ❕ self.started True
+[INFO] [1766222331.884799552] [base_node]: ❗ sign -1 L=860 R=525| target 384
+[INFO] [1766222331.885570230] [base_node]: 🟢 START
+[INFO] [1766222331.926421435] [base_node]: ❕ self.started True
+[INFO] [1766222331.929541956] [base_node]: ❗ sign -1 L=885 R=527| target 384
+[INFO] [1766222331.929940987] [base_node]: 🟢 START
+[INFO] [1766222331.938135608] [base_node]: ❕ self.started True
+[INFO] [1766222331.943163221] [base_node]: ❗ sign -1 L=880 R=530| target 383
+[INFO] [1766222331.943758931] [base_node]: 🟢 START
+[INFO] [1766222331.973770173] [base_node]: ❕ self.started True
+[INFO] [1766222331.978109582] [base_node]: ❗ sign -1 L=875 R=530| target 383
+[INFO] [1766222331.978726663] [base_node]: 🟢 START
+[INFO] [1766222332.031776187] [base_node]: ❕ self.started True
+[INFO] [1766222332.036668223] [base_node]: ❗ sign -1 L=870 R=528| target 384
+[INFO] [1766222332.037357543] [base_node]: 🟢 START
+[INFO] [1766222332.059723209] [base_node]: ❕ self.started True
+[INFO] [1766222332.062651863] [base_node]: ❗ sign -1 L=886 R=535| target 385
+[INFO] [1766222332.063002363] [base_node]: 🟢 START
+[INFO] [1766222332.084184310] [base_node]: ❕ self.started True
+[INFO] [1766222332.086997986] [base_node]: ❗ sign -1 L=884 R=545| target 384
+[INFO] [1766222332.087318683] [base_node]: 🟢 START
+[INFO] [1766222332.134324534] [base_node]: ❕ self.started True
+[INFO] [1766222332.137481821] [base_node]: ❗ sign -1 L=907 R=543| target 384
+[INFO] [1766222332.137821018] [base_node]: 🟢 START
+[INFO] [1766222332.159181509] [base_node]: ❕ self.started True
+[INFO] [1766222332.162492674] [base_node]: ❗ sign -1 L=871 R=557| target 384
+[INFO] [1766222332.162931296] [base_node]: 🟢 START
+[INFO] [1766222332.189731318] [base_node]: ❕ self.started True
+[INFO] [1766222332.194535656] [base_node]: ❗ sign -1 L=861 R=550| target 385
+[INFO] [1766222332.195006930] [base_node]: 🟢 START
+[INFO] [1766222332.234043345] [base_node]: ❕ self.started True
+[INFO] [1766222332.237829102] [base_node]: ❗ sign -1 L=880 R=555| target 387
+[INFO] [1766222332.238229740] [base_node]: 🟢 START
+[INFO] [1766222332.273223478] [base_node]: ❕ self.started True
+[INFO] [1766222332.277130234] [base_node]: ❗ sign -1 L=856 R=554| target 389
+[INFO] [1766222332.277484275] [base_node]: 🟢 START
+[INFO] [1766222332.301779715] [base_node]: ❕ self.started True
+[INFO] [1766222332.305755105] [base_node]: ❗ sign -1 L=882 R=576| target 390
+[INFO] [1766222332.306389727] [base_node]: 🟢 START
+[INFO] [1766222332.355819541] [base_node]: ❕ self.started True
+[INFO] [1766222332.360115505] [base_node]: ❗ sign -1 L=895 R=570| target 390
+[INFO] [1766222332.360630577] [base_node]: 🟢 START
+[INFO] [1766222332.368873522] [base_node]: ❕ self.started True
+[INFO] [1766222332.373614262] [base_node]: ❗ sign -1 L=886 R=563| target 388
+[INFO] [1766222332.374351739] [base_node]: 🟢 START
+[INFO] [1766222332.398465315] [base_node]: ❕ self.started True
+[INFO] [1766222332.401847629] [base_node]: ❗ sign -1 L=919 R=584| target 385
+[INFO] [1766222332.402247618] [base_node]: 🟢 START
+[INFO] [1766222332.437684619] [base_node]: ❕ self.started True
+[INFO] [1766222332.441342606] [base_node]: ❗ sign -1 L=908 R=616| target 379
+[INFO] [1766222332.441765867] [base_node]: 🟢 START
+[INFO] [1766222332.470339429] [base_node]: ❕ self.started True
+[INFO] [1766222332.473842602] [base_node]: ❗ sign -1 L=918 R=625| target 372
+[INFO] [1766222332.474282893] [base_node]: 🟢 START
+[INFO] [1766222332.516854298] [base_node]: ❕ self.started True
+[INFO] [1766222332.519722640] [base_node]: ❗ sign -1 L=918 R=632| target 364
+[INFO] [1766222332.520078767] [base_node]: 🟢 START
+[INFO] [1766222332.564197364] [base_node]: ❕ self.started True
+[INFO] [1766222332.567659783] [base_node]: ❗ sign -1 L=890 R=630| target 355
+[INFO] [1766222332.568082198] [base_node]: 🟢 START
+[INFO] [1766222332.587763054] [base_node]: ❕ self.started True
+[INFO] [1766222332.591976961] [base_node]: ❗ sign -1 L=892 R=637| target 333
+[INFO] [1766222332.592584044] [base_node]: 🟢 START
+[INFO] [1766222332.617643638] [base_node]: ❕ self.started True
+[INFO] [1766222332.621324029] [base_node]: ❗ sign -1 L=888 R=636| target 304
+[INFO] [1766222332.621714853] [base_node]: 🟢 START
+[INFO] [1766222332.657983168] [base_node]: ❕ self.started True
+[INFO] [1766222332.662111444] [base_node]: ❗ sign -1 L=950 R=690| target 169
+[INFO] [1766222332.662479509] [base_node]: 🟢 START
+[INFO] [1766222332.689992718] [base_node]: ❕ self.started True
+[INFO] [1766222332.693281318] [base_node]: ❗ sign -1 L=880 R=685| target 169
+[INFO] [1766222332.693640891] [base_node]: 🟢 START
+[INFO] [1766222332.722585786] [base_node]: ❕ self.started True
+[INFO] [1766222332.726437867] [base_node]: ❗ sign -1 L=982 R=693| target 169
+[INFO] [1766222332.726921638] [base_node]: 🟢 START
+[INFO] [1766222332.781746831] [base_node]: ❕ self.started True
+[INFO] [1766222332.785308809] [base_node]: ❗ sign -1 L=980 R=710| target 169
+[INFO] [1766222332.786677561] [base_node]: 🟢 START
+[INFO] [1766222332.809486073] [base_node]: ❕ self.started True
+[INFO] [1766222332.812336817] [base_node]: ❗ sign -1 L=949 R=741| target 169
+[INFO] [1766222332.812746445] [base_node]: 🟢 START
+[INFO] [1766222332.828839524] [base_node]: ❕ self.started True
+[INFO] [1766222332.832116030] [base_node]: ❗ sign -1 L=1006 R=733| target 169
+[INFO] [1766222332.832475682] [base_node]: 🟢 START
+[INFO] [1766222332.882648958] [base_node]: ❕ self.started True
+[INFO] [1766222332.886598217] [base_node]: ❗ sign -1 L=1004 R=747| target 169
+[INFO] [1766222332.886980193] [base_node]: 🟢 START
+[INFO] [1766222332.909712404] [base_node]: ❕ self.started True
+[INFO] [1766222332.912998876] [base_node]: ❗ sign -1 L=1010 R=735| target 169
+[INFO] [1766222332.913442738] [base_node]: 🟢 START
+[INFO] [1766222332.936112571] [base_node]: ❕ self.started True
+[INFO] [1766222332.939687069] [base_node]: ❗ sign -1 L=1043 R=809| target 169
+[INFO] [1766222332.940463417] [base_node]: 🟢 START
+[INFO] [1766222332.996698094] [base_node]: ❕ self.started True
+[INFO] [1766222333.000395299] [base_node]: ❗ sign -1 L=1037 R=909| target 169
+[INFO] [1766222333.000792021] [base_node]: 🟢 START
+[INFO] [1766222333.019189382] [base_node]: ❕ self.started True
+[INFO] [1766222333.022126808] [base_node]: ❗ sign -1 L=1070 R=831| target 169
+[INFO] [1766222333.022504132] [base_node]: 🟢 START
+[INFO] [1766222333.044356144] [base_node]: ❕ self.started True
+[INFO] [1766222333.047352806] [base_node]: ❗ sign -1 L=1082 R=939| target 169
+[INFO] [1766222333.047716805] [base_node]: 🟢 START
+[INFO] [1766222333.086162839] [base_node]: ❕ self.started True
+[INFO] [1766222333.089145956] [base_node]: ❗ sign -1 L=1104 R=900| target 169
+[INFO] [1766222333.089502772] [base_node]: 🟢 START
+[INFO] [1766222333.117582297] [base_node]: ❕ self.started True
+[INFO] [1766222333.120466777] [base_node]: ❗ sign -1 L=1269 R=1076| target 305
+[INFO] [1766222333.120890470] [base_node]: 🟢 START
+[INFO] [1766222333.164967832] [base_node]: ❕ self.started True
+[INFO] [1766222333.169826740] [base_node]: ❗ sign -1 L=1134 R=918| target 293
+[INFO] [1766222333.170447751] [base_node]: 🟢 START
+[INFO] [1766222333.195252020] [base_node]: ❕ self.started True
+[INFO] [1766222333.198254769] [base_node]: ❗ sign -1 L=1159 R=976| target 288
+[INFO] [1766222333.198602350] [base_node]: 🟢 START
+[INFO] [1766222333.226504281] [base_node]: ❕ self.started True
+[INFO] [1766222333.229891132] [base_node]: ❗ sign -1 L=1290 R=1122| target 286
+[INFO] [1766222333.230297407] [base_node]: 🟢 START
+[INFO] [1766222333.267303655] [base_node]: ❕ self.started True
+[INFO] [1766222333.270473780] [base_node]: ❗ sign -1 L=1560 R=1290| target 286
+[INFO] [1766222333.270930369] [base_node]: 🟢 START
+[INFO] [1766222333.314156536] [base_node]: ❕ self.started True
+[INFO] [1766222333.316961478] [base_node]: ❗ sign -1 L=1512 R=1341| target 288
+[INFO] [1766222333.317283167] [base_node]: 🟢 START
+[INFO] [1766222333.337289513] [base_node]: ❕ self.started True
+[INFO] [1766222333.341126851] [base_node]: ❗ sign -1 L=1600 R=1433| target 293
+[INFO] [1766222333.341520814] [base_node]: 🟢 START
+[INFO] [1766222333.361757277] [base_node]: ❕ self.started True
+[INFO] [1766222333.364886828] [base_node]: ❗ sign -1 L=1685 R=1522| target 298
+[INFO] [1766222333.365275761] [base_node]: 🟢 START
+[INFO] [1766222333.425974092] [base_node]: ❕ self.started True
+[INFO] [1766222333.429757103] [base_node]: ❗ sign -1 L=1905 R=1650| target 306
+[INFO] [1766222333.430291565] [base_node]: 🟢 START
+[INFO] [1766222333.440585971] [base_node]: ❕ self.started True
+[INFO] [1766222333.445223771] [base_node]: ❗ sign -1 L=2029 R=1794| target 314
+[INFO] [1766222333.445673051] [base_node]: 🟢 START
+[INFO] [1766222333.475676886] [base_node]: ❕ self.started True
+[INFO] [1766222333.479229749] [base_node]: ❗ sign -1 L=2276 R=1961| target 328
+[INFO] [1766222333.479609009] [base_node]: 🟢 START
+[INFO] [1766222333.536862131] [base_node]: ❕ self.started True
+[INFO] [1766222333.541807899] [base_node]: ❗ sign -1 L=2432 R=2099| target 341
+[INFO] [1766222333.542256410] [base_node]: 🟢 START
+[INFO] [1766222333.568147850] [base_node]: ❕ self.started True
+[INFO] [1766222333.572740423] [base_node]: ❗ sign -1 L=2180 R=1898| target 355
+[INFO] [1766222333.573150584] [base_node]: 🟢 START
+[INFO] [1766222333.592426765] [base_node]: ❕ self.started True
+[INFO] [1766222333.595525277] [base_node]: ❗ sign -1 L=2306 R=1156| target 368
+[INFO] [1766222333.595930981] [base_node]: 🟢 START
+[INFO] [1766222333.651955180] [base_node]: ❕ self.started True
+[INFO] [1766222333.654913018] [base_node]: ❗ sign -1 L=2445 R=1201| target 378
+[INFO] [1766222333.655258124] [base_node]: 🟢 START
+[INFO] [1766222333.680493443] [base_node]: ❕ self.started True
+[INFO] [1766222333.683321712] [base_node]: ❗ sign -1 L=2559 R=1205| target 391
+[INFO] [1766222333.683654486] [base_node]: 🟢 START
+[INFO] [1766222333.714938539] [base_node]: ❕ self.started True
+[INFO] [1766222333.718778420] [base_node]: ❗ sign -1 L=1581 R=456| target 400
+[INFO] [1766222333.719349829] [base_node]: 🟢 START
+[INFO] [1766222333.761396097] [base_node]: ❕ self.started True
+[INFO] [1766222333.764528746] [base_node]: ❗ sign -1 L=1175 R=217| target 406
+[INFO] [1766222333.764909586] [base_node]: 🟢 START
+[INFO] [1766222333.795478158] [base_node]: ❕ self.started True
+[INFO] [1766222333.799023288] [base_node]: ❗ sign -1 L=451 R=257| target 412
+[INFO] [1766222333.799497427] [base_node]: 🟢 START
+[INFO] [1766222333.809231551] [base_node]: ❕ self.started True
+[INFO] [1766222333.813391700] [base_node]: ❗ sign -1 L=1812 R=1779| target 416
+[INFO] [1766222333.814160121] [base_node]: 🟢 START
+[INFO] [1766222333.888636237] [base_node]: ❕ self.started True
+[INFO] [1766222333.892089424] [base_node]: ❕ sign 0 L=0 R=0| target 423
+[INFO] [1766222333.892504177] [base_node]: 🟢 START

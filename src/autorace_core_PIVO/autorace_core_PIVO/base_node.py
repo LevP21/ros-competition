@@ -180,7 +180,8 @@ class BaseNode(Node):
         self.green_upper = np.array([80, 255, 255])
 
         self.x_target = 0
-
+        self.flag_sign = 0
+        self.sign = 0
     
     def clock_callback(self, msg: Clock):
         self.pid.update_time(msg)
@@ -261,7 +262,7 @@ class BaseNode(Node):
             right_pixels = np.count_nonzero(arrow_mask[:, w // 2:])
 
 
-            flag = 1 if right_pixels > left_pixels else -1
+            flag = 1 if left_pixels - right_pixels > 400 else -1
 
             return flag, right_pixels, left_pixels
 
@@ -317,16 +318,24 @@ class BaseNode(Node):
         
         if self.started:
 
-            image_center_x = w / 2.0 
-
-            sign, right_pixels, left_pixels = self.detect_turn_sign(cv_image, 300)
+            tmp_sign, right_pixels, left_pixels = self.detect_turn_sign(cv_image, 300)
+                
+            if tmp_sign != 0 and self.flag_sign == 0:
+                self.sign = tmp_sign
+                self.flag_sign = 1
+            elif tmp_sign == 0 and self.flag_sign == 1:
+                self.sign = tmp_sign
+                self.flag_sign = 0
+            
+            
             self.x_target = self._compute_lane_target(roi, min_area=2000)
+            image_center_x = w / 2.0 
 
             # if sign != 0:
                 # self.x_target = 350
                 # self.x_target = (self.x_target + (image_center_x - sign * 300)) / 2
 
-            self.get_logger().info(f"{"❕" if sign == 0 else "❗"} sign {sign} L={left_pixels} R={right_pixels }| target {self.x_target}")
+            self.get_logger().info(f"{"❕" if self.sign == 0 else "❗"} sign {self.sign}| target {self.x_target}")
 
             self.x_target = self.x_target - self.beta * (self.x_target - self.last_x_target)
             self.last_x_target = self.x_target
