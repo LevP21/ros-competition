@@ -174,7 +174,8 @@ class BaseNode(Node):
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
 
         #! Путь для записи видео
-        self.out = cv2.VideoWriter("/home/ilya/Documents/ros-competition/video/output.mp4", fourcc, 30, (848, 480))
+        self.output = cv2.VideoWriter("/mnt/d/ros/competition/output.mp4", fourcc, 30, (848, 480))
+        self.depth_output = cv2.VideoWriter("/mnt/d/ros/competition/depth_output.mp4", fourcc, 10, (848, 480))
 
         self.green_lower = np.array([40, 80, 80])
         self.green_upper = np.array([80, 255, 255])
@@ -192,7 +193,7 @@ class BaseNode(Node):
 
 
     def depth_image_callback(self, msg: Image):
-        pass
+        self._save_depth_output(msg)
 
 
     def depth_info_callback(self, msg: CameraInfo):
@@ -213,6 +214,7 @@ class BaseNode(Node):
 
     def color_image_callback(self, msg: Image):
         self._cv_steer(msg)
+
 
     def detect_turn_sign(self, image, min_blue_area=500):
         """
@@ -267,7 +269,6 @@ class BaseNode(Node):
             return flag, right_pixels, left_pixels
 
         return 0, 0, 0
-
 
 
     def _detect_green_light(self, image, min_area=1500):
@@ -371,7 +372,7 @@ class BaseNode(Node):
         h_small = h // 3
         debug[0:h_small, 0:(w // 3)] = cv2.resize(combined_mask, (w // 3, h_small))
 
-        self.out.write(debug)
+        self.output.write(debug)
     
 
     def _compute_lane_target(self, roi, min_area=100):
@@ -415,6 +416,22 @@ class BaseNode(Node):
                 cx = w // 2
 
         return cx
+    
+
+    def _save_depth_output(self, msg):
+        try:
+            cv_image = self.bridge.imgmsg_to_cv2(msg)
+        except CvBridgeError as e:
+            self.get_logger().error(f"CvBridge error: {e}")
+            return
+        
+        # Depth image processing
+        img_clean = np.nan_to_num(cv_image, nan=0.0, posinf=0.0, neginf=0.0)
+        vis = cv2.normalize(img_clean, None, 0, 255, cv2.NORM_MINMAX)
+        vis = vis.astype(np.uint8)
+        vis = cv2.cvtColor(vis, cv2.COLOR_GRAY2BGR)
+        
+        self.depth_output.write(vis)
 
 
 def main(args=None):
