@@ -310,9 +310,10 @@ class BaseNode(Node):
         if self._detect_green_light(cv_image):
             self.started = True
 
+        self.started = True
         if self.started:
 
-            tmp_sign, right_pixels, left_pixels = self.detect_turn_sign(cv_image, 300)
+            tmp_sign, right_pixels, left_pixels = self.detect_turn_sign(cv_image, 10000)
                 
             if tmp_sign != 0 and self.flag_sign == 0:
                 self.sign = tmp_sign
@@ -324,7 +325,8 @@ class BaseNode(Node):
             self.x_target = self._compute_lane_target(roi, min_area=2000)
             image_center_x = w / 2.0 
 
-            self.x_target = self.x_target + self.sign * (image_center_x + self.sign * 100)
+            # self.x_target = (self.x_target + (image_center_x + self.sign * image_center_x)) / 2
+            self.x_target = self.x_target if self.sign == 0 else (image_center_x + self.sign * image_center_x)
 
             self.get_logger().info(f"{"❕" if self.sign == 0 else "❗"} sign {self.sign}| target {self.x_target}")
 
@@ -387,7 +389,7 @@ class BaseNode(Node):
 
         # Find center of bright region(s)
 
-        cx = int(w * 0.2)
+        cx = int(w * 0.3)
 
         yellow_M = cv2.moments(yellow_mask)
         white_M = cv2.moments(white_mask)
@@ -402,7 +404,7 @@ class BaseNode(Node):
                 if white_x - yellow_x > 0:                   
                     cx = yellow_x + (white_x - yellow_x) // 2
             else:
-                cx = int(w * 0.8)
+                cx = int(w * 0.7)
         else:
             if white_area <= min_area:
                 cx = w // 2
