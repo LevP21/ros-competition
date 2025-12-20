@@ -250,21 +250,15 @@ class BaseNode(Node):
             if r < 15:
                 continue
 
-            roi = mid_image[cy - r:cy + r, cx - r:cx + r]
+            roi = blue_mask[cy - r:cy + r, cx - r:cx + r]
             if roi.size == 0:
                 continue
 
-            arrow_lower = np.array([80, 80, 80])
-            arrow_upper = np.array([120, 120, 120])
+            h, w = roi.shape
+            left_pixels = np.count_nonzero(roi[:h // 2, :w // 2])
+            right_pixels = np.count_nonzero(roi[:h // 2, w // 2:])
 
-            arrow_mask = cv2.inRange(roi, arrow_lower, arrow_upper)
-
-            h, w = arrow_mask.shape
-            left_pixels = np.count_nonzero(arrow_mask[:, :w // 2])
-            right_pixels = np.count_nonzero(arrow_mask[:, w // 2:])
-
-
-            flag = 1 if left_pixels - right_pixels > 400 else -1
+            flag = 1 if left_pixels > right_pixels else -1
 
             return flag, right_pixels, left_pixels
 
@@ -316,7 +310,7 @@ class BaseNode(Node):
         if self._detect_green_light(cv_image):
             self.started = True
 
-        
+        self.started = True
         if self.started:
 
             tmp_sign, right_pixels, left_pixels = self.detect_turn_sign(cv_image, 300)
@@ -327,7 +321,6 @@ class BaseNode(Node):
             elif tmp_sign == 0 and self.flag_sign == 1:
                 self.sign = tmp_sign
                 self.flag_sign = 0
-            
             
             self.x_target = self._compute_lane_target(roi, min_area=2000)
             image_center_x = w / 2.0 
