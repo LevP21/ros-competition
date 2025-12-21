@@ -154,12 +154,12 @@ class BaseNode(Node):
         self.white_upper = np.array([180, 40, 255])
 
         # PID & speed params
-        self.kp = 4.0
+        self.kp = 3.0
         self.ki = 0.0
-        self.kd = 1.5
-        self.max_angular = 1.2
+        self.kd = 1.0
+        self.max_angular = 0.8
 
-        self.max_speed = 0.2
+        self.max_speed = 0.3
         self.min_speed = 0.1
         self.speed_reduction_factor = 0.8
 
@@ -181,7 +181,7 @@ class BaseNode(Node):
         self.green_upper = np.array([80, 255, 255])
 
         self.x_target = 0
-        self.flag_sign = 0
+        self.flag_sign = 1
         self.sign = 0
     
     def clock_callback(self, msg: Clock):
@@ -314,7 +314,7 @@ class BaseNode(Node):
         if self._detect_green_light(cv_image):
             self.started = True
 
-        self.started = True
+        # self.started = True
         if self.started:
 
             tmp_sign, tmp_x_target, right_pixels, left_pixels, area = self.detect_turn_sign(cv_image, 500)
@@ -327,18 +327,23 @@ class BaseNode(Node):
             #     self.sign = tmp_sign
             #     self.flag_sign = 0
             
+
             if tmp_x_target == -1:
                 self.x_target = self._compute_lane_target(roi, min_area=2000)
-            elif area < 25000:
+            elif area < 15000:
                 self.x_target = tmp_x_target
             else:
-                self.x_target = self.x_target if tmp_sign == 0 else (image_center_x + tmp_sign * image_center_x)
+                if self.flag_sign:
+                    self.sign = tmp_sign
+                    self.flag_sign = 0
+
+                self.x_target = self.x_target if self.sign == 0 else (image_center_x + self.sign * image_center_x)
 
 
                 # self.x_target = (self.x_target + (image_center_x + self.sign * image_center_x)) / 2
 
 
-            self.get_logger().info(f"{"❕" if self.sign == 0 else "❗"} sign {tmp_sign} | area {area} | target {self.x_target}")
+            self.get_logger().info(f"{"❕" if self.sign == 0 else "❗"} flag {self.flag_sign} | sign {self.sign} | area {area} | target {self.x_target} | tmp_trg {tmp_x_target}")
 
             self.x_target = self.x_target - self.beta * (self.x_target - self.last_x_target)
             self.last_x_target = self.x_target
