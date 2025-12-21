@@ -219,13 +219,15 @@ class BaseNode(Node):
     def detect_turn_sign(self, image, min_blue_area=500):
         """
         Returns:
-            0  - no sign
-            1  - turn right
-            -1  - turn left
+            flag            :  0 (no sign), 1 (right), -1 (left)
+            tmp_x_target    :  x center of sign, -1 if none
+            right_pixels
+            left_pixels
+            area
         """
 
         h, w = image.shape[:2]
-        mid_image = image #[h//4 : 3*h//4, :]
+        mid_image = image  # [h//4 : 3*h//4, :]
 
         hsv = cv2.cvtColor(mid_image, cv2.COLOR_BGR2HSV)
         blue_lower = np.array([95, 120, 70])
@@ -254,15 +256,17 @@ class BaseNode(Node):
             if roi.size == 0:
                 continue
 
-            h, w = roi.shape
-            left_pixels = np.count_nonzero(roi[h // 2:, :w // 2])
-            right_pixels = np.count_nonzero(roi[h // 2:, w // 2:])
+            hh, ww = roi.shape
+            left_pixels = np.count_nonzero(roi[hh // 2 :, : ww // 2])
+            right_pixels = np.count_nonzero(roi[hh // 2 :, ww // 2 :])
 
             flag = 1 if right_pixels > left_pixels else -1
 
-            return flag, right_pixels, left_pixels
+            tmp_x_target = cx
 
-        return 0, 0, 0
+            return flag, tmp_x_target, right_pixels, left_pixels, area
+
+        return 0, -1, 0, 0, 0
 
 
     def _detect_green_light(self, image, min_area=1500):
@@ -313,22 +317,28 @@ class BaseNode(Node):
         self.started = True
         if self.started:
 
-            tmp_sign, right_pixels, left_pixels = self.detect_turn_sign(cv_image, 10000)
+            tmp_sign, tmp_x_target, right_pixels, left_pixels, area = self.detect_turn_sign(cv_image, 500)
+            image_center_x = w / 2.0
                 
-            if tmp_sign != 0 and self.flag_sign == 0:
-                self.sign = tmp_sign
-                self.flag_sign = 1
-            elif tmp_sign == 0 and self.flag_sign == 1:
-                self.sign = tmp_sign
-                self.flag_sign = 0
+            # if tmp_sign != 0 and self.flag_sign == 0:
+            #     self.sign = tmp_sign
+            #     self.flag_sign = 1
+            # elif tmp_sign == 0 and self.flag_sign == 1:
+            #     self.sign = tmp_sign
+            #     self.flag_sign = 0
             
-            self.x_target = self._compute_lane_target(roi, min_area=2000)
-            image_center_x = w / 2.0 
+            if tmp_x_target == -1:
+                self.x_target = self._compute_lane_target(roi, min_area=2000)
+            elif area < 25000:
+                self.x_target = tmp_x_target
+            else:
+                self.x_target = self.x_target if tmp_sign == 0 else (image_center_x + tmp_sign * image_center_x)
 
-            # self.x_target = (self.x_target + (image_center_x + self.sign * image_center_x)) / 2
-            self.x_target = self.x_target if self.sign == 0 else (image_center_x + self.sign * image_center_x)
 
-            self.get_logger().info(f"{"❕" if self.sign == 0 else "❗"} sign {self.sign}| target {self.x_target}")
+                # self.x_target = (self.x_target + (image_center_x + self.sign * image_center_x)) / 2
+
+
+            self.get_logger().info(f"{"❕" if self.sign == 0 else "❗"} sign {tmp_sign} | area {area} | target {self.x_target}")
 
             self.x_target = self.x_target - self.beta * (self.x_target - self.last_x_target)
             self.last_x_target = self.x_target
