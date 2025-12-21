@@ -183,6 +183,13 @@ class BaseNode(Node):
         self.x_target = 0
         self.flag_sign = 1
         self.sign = 0
+
+        self.aruco_detected = False
+        self.aruco_id = None
+        
+        self.aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_6X6_250)
+        self.aruco_params = cv2.aruco.DetectorParameters_create()
+
     
     def clock_callback(self, msg: Clock):
         self.pid.update_time(msg)
@@ -279,6 +286,42 @@ class BaseNode(Node):
         green_area = np.count_nonzero(green_mask)
 
         return green_area > min_area
+    
+    def _detect_aruco_marker(self, image):
+        """Детектирование ArUco маркера и публикация ID"""
+
+        if self.aruco_detected:
+            return
+        
+        h, w = image.shape[:2]
+        right_roi = image[:, int(w*0.6):w]
+
+        
+        gray = cv2.cvtColor(right_roi, cv2.COLOR_BGR2GRAY)
+        
+        corners, ids, rejected = cv2.aruco.detectMarkers(gray, self.aruco_dict, parameters=self.aruco_params)
+        self.aruco_params.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_SUBPIX
+        self.aruco_params.adaptiveThreshWinSizeMin = 5
+        self.aruco_params.adaptiveThreshWinSizeMax = 35
+        self.aruco_params.adaptiveThreshWinSizeStep = 10
+        self.aruco_params.minMarkerPerimeterRate = 0.02
+        self.aruco_params.maxMarkerPerimeterRate = 4.0
+        
+
+        if ids is not None and len(ids) > 0:
+            marker_id = ids[0][0]
+            
+            self.aruco_detected = True
+            self.aruco_id = marker_id
+            
+            id_msg = Float32()
+            id_msg.data = float(marker_id)
+            self.aruco.publish(id_msg)
+            
+            self.get_logger().info(f"✅ Обнаружен ArUco маркер с ID: {marker_id}")
+            
+            # Опционально: рисуем маркеры на изображении для отладки
+            # cv2.aruco.drawDetectedMarkers(image, corners, ids)
 
 
     def _cv_steer(self, msg):
@@ -287,6 +330,8 @@ class BaseNode(Node):
         except CvBridgeError as e:
             self.get_logger().error(f"CvBridge error: {e}")
             return
+        
+        self._detect_aruco_marker(cv_image)
 
         h, w = cv_image.shape[:2]
 
@@ -314,7 +359,7 @@ class BaseNode(Node):
         if self._detect_green_light(cv_image):
             self.started = True
 
-        # self.started = True
+        self.started = True
         if self.started:
 
             tmp_sign, tmp_x_target, right_pixels, left_pixels, area = self.detect_turn_sign(cv_image, 500)

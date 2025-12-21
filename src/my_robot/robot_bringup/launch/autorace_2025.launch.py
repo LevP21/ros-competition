@@ -36,11 +36,11 @@ def generate_launch_description():
         executable='create',
         arguments=['-name', 'robot',
                    '-topic', 'robot_description',
-                   '-x', '1.15', '-y', '-2.2', '-z', '0.08', '-Y', '0.0',    # traffic lights
+                #    '-x', '1.15', '-y', '-2.2', '-z', '0.08', '-Y', '0.0',    # traffic lights
                 #    '-x', '2.08', '-y', '-1.04', '-z', '0.08', '-Y', '3.14',  # crossroad
                 #    '-x', '0.63', '-y', '0.16', '-z', '0.08', '-Y', '0.0',    # cone obstacles
                 #    '-x', '1.82', '-y', '1.49', '-z', '0.08', '-Y', '1.57',   # overtaking
-                #    '-x', '-2.14', '-y', '1.95', '-z', '0.08', '-Y', '-1.57', # AruCo mark
+                   '-x', '-2.14', '-y', '1.95', '-z', '0.08', '-Y', '-1.57', # AruCo mark
                 #    '-x', '-2.14', '-y', '0.53', '-z', '0.08', '-Y', '-1.57', # tunnel
                 ],
         output='screen',
