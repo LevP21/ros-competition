@@ -544,7 +544,7 @@ class BaseNode(Node):
         if self._detect_green_light(cv_image):
             self.started = True
 
-        # self.started = True
+        self.started = True
         if self.started:
             # left_boundary, right_boundary = self._get_lane_boundaries(
             #     yellow_mask, white_mask, roi_w, roi_h
@@ -558,7 +558,8 @@ class BaseNode(Node):
 
             if tmp_x_target == -1:
                 self.x_target, left_boundary, right_boundary = self._compute_lane_target(roi, min_area=2000)
-            elif area < 15000:
+                self.sign = 0
+            elif area < 15000 and self.flag_sign:
                 self.x_target = tmp_x_target
             else:
                 if self.flag_sign:
