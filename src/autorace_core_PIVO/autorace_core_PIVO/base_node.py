@@ -9,6 +9,16 @@ from geometry_msgs.msg import Twist
 from std_msgs.msg import Float32, String
 from rosgraph_msgs.msg import Clock
 from cv_bridge import CvBridge, CvBridgeError
+import time
+
+from sensor_msgs_py.point_cloud2 import read_points
+# import ros_numpy
+import open3d as o3d
+import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+from rclpy.executors import SingleThreadedExecutor, MultiThreadedExecutor
+from rclpy.callback_groups import ReentrantCallbackGroup, MutuallyExclusiveCallbackGroup
+
 
 
 class PID:
@@ -74,6 +84,38 @@ class BaseNode(Node):
         qos_img.reliability = QoSReliabilityPolicy.BEST_EFFORT
         qos_img.durability = QoSDurabilityPolicy.VOLATILE
 
+        self.window_size_for_depth_camera = 10
+
+        self.depth_executor = SingleThreadedExecutor()
+        self.depth_callback_group = ReentrantCallbackGroup()
+        
+        self.depth_point = self.create_subscription(
+            PointCloud2,
+            '/depth/points',
+            self.depth_point_callback,
+            10,
+            callback_group=self.depth_callback_group
+        )
+        
+        # Запускаем executor в отдельном потоке
+        import threading
+        self.depth_executor = SingleThreadedExecutor()
+        self.depth_executor.add_node(self)
+        
+        # Запускаем в отдельном потоке
+        self.depth_thread = threading.Thread(
+            target=self._run_depth_executor,
+            daemon=True
+        )
+        self.depth_thread.start()
+        
+        # Флаг для контроля обработки
+        self.min_distance = float('inf')
+        self.obstacle_x_norm = float('inf')
+        self.DEPTH_THRESHOLD = 1.5
+        self.depth_processing_enabled = False
+        self.last_depth_time = time.time()
+
         self.clock = self.create_subscription(
             Clock,
             '/clock',
@@ -116,12 +158,12 @@ class BaseNode(Node):
             10
         )
 
-        self.depth_point = self.create_subscription(
-            PointCloud2,
-            '/depth/points',
-            self.depth_point_callback,
-            10
-        )
+        # self.depth_point = self.create_subscription(
+        #     PointCloud2,
+        #     '/depth/points',
+        #     self.depth_point_callback,
+        #     10
+        # )
 
         self.imu = self.create_subscription(
             Imu,
@@ -174,8 +216,8 @@ class BaseNode(Node):
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
 
         #! Путь для записи видео
-        self.output = cv2.VideoWriter("/mnt/d/ros/competition/output.mp4", fourcc, 30, (848, 480))
-        self.depth_output = cv2.VideoWriter("/mnt/d/ros/competition/depth_output.mp4", fourcc, 10, (848, 480))
+        self.output = cv2.VideoWriter("/home/babrakadabra/ros-competition/output.mp4", fourcc, 30, (848, 480))
+        self.depth_output = cv2.VideoWriter("/home/babrakadabra/ros-competition/depth_output.mp4", fourcc, 10, (848, 480))
 
         self.green_lower = np.array([40, 80, 80])
         self.green_upper = np.array([80, 255, 255])
@@ -183,6 +225,12 @@ class BaseNode(Node):
         self.x_target = 0
         self.flag_sign = 0
         self.sign = 0
+
+    def _run_depth_executor(self):
+        try:
+            self.depth_executor.spin()
+        except Exception as e:
+            self.get_logger().error(f"Depth executor error: {e}")
     
     def clock_callback(self, msg: Clock):
         self.pid.update_time(msg)
@@ -204,8 +252,205 @@ class BaseNode(Node):
         pass
 
 
-    def depth_point_callback(self, msg: PointCloud2):
-        pass
+    def _min_distance_in_window(self, pc: PointCloud2, window_height_ratio=0.5, width_margin_ratio=0.1):
+        points = read_points(pc, field_names=("x","y","z"), skip_nans=True)
+    
+        if len(points) == 0:
+            return float('inf'), None
+        
+        width = pc.width
+        height = pc.height
+        
+        if not isinstance(points, np.ndarray):
+            points = np.array(points)
+        
+        # 1. Создаем маску для окна
+        total_points = len(points)
+        indices = np.arange(total_points)
+        
+        # Вычисляем строки (v) и столбцы (u) для каждой точки
+        rows = indices // width  # целочисленное деление = строка
+        cols = indices % width   # остаток от деления = столбец
+        
+        # 2. Маска для высоты (верхние window_height_ratio%)
+        height_mask = rows < (height * window_height_ratio)
+        
+        # 3. Маска для ширины (отступы width_margin_ratio с каждой стороны)
+        width_mask = (cols >= (width * width_margin_ratio)) & (cols < (width * (1 - width_margin_ratio)))
+        
+        # 4. Общая маска окна
+        window_mask = height_mask & width_mask
+        
+        # 5. Берем только точки в окне (и их координаты)
+        window_points = points[window_mask]
+        window_cols = cols[window_mask]  # сохраняем u-координаты
+        
+        if len(window_points) == 0:
+            return float('inf'), None
+        
+        # 6. Берем x-координаты (глубину)
+        x_coords = window_points[:, 0]
+        
+        # 7. Фильтруем по расстоянию
+        valid_mask = (x_coords > 0) & (x_coords < self.DEPTH_THRESHOLD)
+        valid_x = x_coords[valid_mask]
+        valid_cols = window_cols[valid_mask]  # соответствующие u-координаты
+        
+        if len(valid_x) == 0:
+            return float('inf'), None
+        
+        # 8. Находим индекс минимального расстояния
+        min_idx = np.argmin(valid_x)
+        min_dist = valid_x[min_idx]
+        obstacle_u = valid_cols[min_idx]  # u-координата точки с минимальным расстоянием
+        
+        # 9. Нормализуем координату (-1..1) относительно центра кадра
+        center_u = width // 2
+        obstacle_u_norm = (obstacle_u - center_u) / (width // 2)
+        
+        self.get_logger().debug(
+            f"Obstacle: dist={min_dist:.3f}m, "
+            f"u={obstacle_u}, "
+            f"norm={obstacle_u_norm:.3f}"
+        )
+        
+        return min_dist, obstacle_u_norm
+
+    def depth_point_callback(self, msg):
+        """Callback выполняется в отдельном потоке"""
+        if not self.depth_processing_enabled:
+            return
+        
+        try:
+            # self.min_distance = self._min_distance_in_window(msg)
+            
+            if time.time() - self.last_depth_time > 0.1:  # 10 Гц
+                self.min_distance, self.obstacle_x_norm = self._min_distance_in_window(msg)
+                self.last_depth_time = time.time()
+            
+        except Exception as e:
+            self.get_logger().error(f"Depth processing error: {e}")
+
+    
+    def _get_lane_boundaries(self, yellow_mask, white_mask, width, height, bottom_ratio=0.3, margin_px=0):
+        # Область анализа (нижние 30%)
+        bottom_start = int(height * (1 - bottom_ratio))
+        
+        # 1. Желтая линия - левая граница
+        yellow_bottom = yellow_mask[bottom_start:, :]
+        yellow_pixels = np.column_stack(np.where(yellow_bottom > 0))
+        
+        if len(yellow_pixels) > 0:
+            # Берем 90-й перцентиль правых желтых пикселей (устойчивее к выбросам)
+            right_yellows = np.percentile(yellow_pixels[:, 1], 90)
+            left_boundary = int(right_yellows) + margin_px  # отступ от желтой линии
+        else:
+            left_boundary = margin_px  # минимальный отступ от левого края
+        
+        # 2. Белая линия - правая граница
+        white_bottom = white_mask[bottom_start:, :]
+        white_pixels = np.column_stack(np.where(white_bottom > 0))
+        
+        if len(white_pixels) > 0:
+            # Берем 10-й перцентиль левых белых пикселей
+            left_whites = np.percentile(white_pixels[:, 1], 10)
+            right_boundary = int(left_whites) - margin_px  # отступ от белой линии
+        else:
+            right_boundary = width - margin_px  # минимальный отступ от правого края
+        
+        # # 3. ЖЕСТКИЕ ОГРАНИЧЕНИЯ:
+        
+        # # а) Минимальная ширина полосы
+        # MIN_LANE_WIDTH = width * 0.3  # не менее 30% ширины
+        # if right_boundary - left_boundary < MIN_LANE_WIDTH:
+        #     # Расширяем от центра
+        #     center_x = (left_boundary + right_boundary) // 2
+        #     left_boundary = max(margin_px, int(center_x - MIN_LANE_WIDTH / 2))
+        #     right_boundary = min(width - margin_px, int(center_x + MIN_LANE_WIDTH / 2))
+        
+        # # б) Гарантированный отступ от краев кадра
+        # left_boundary = max(margin_px, left_boundary)
+        # right_boundary = min(width - margin_px, right_boundary)
+        
+        # # в) Белая должна быть справа от желтой с запасом
+        # if right_boundary <= left_boundary + margin_px * 2:
+        #     # Пересечение границ - используем безопасные значения
+        #     left_boundary = margin_px
+        #     right_boundary = width - margin_px
+        
+        # self.get_logger().debug(f"Strict boundaries: [{left_boundary}, {right_boundary}]")
+        
+        return left_boundary, right_boundary
+    
+
+    def compute_avoidance_x(self, lane_target_x, left_boundary, right_boundary):
+        """
+        Формула отталкивания: res = x - alpha * (y - x) / (abs(y - x) + eps) * x * (1 - x)
+        где x - нормализованная цель (0..1 в пределах полосы)
+        y - нормализованная координата препятствия (0..1 в пределах полосы)
+        """
+        if self.min_distance > self.DEPTH_THRESHOLD or self.obstacle_x_norm is None:
+            return lane_target_x
+        
+        # 1. Нормализуем координату цели (x) в диапазон 0..1 относительно полосы
+        x_norm = (lane_target_x - left_boundary) / (right_boundary - left_boundary)
+        
+        # 2. Преобразуем obstacle_x_norm (-1..1 от центра кадра) в 0..1 относительно полосы
+        # Предполагаем, что полоса в центре кадра
+        image_center = (right_boundary + left_boundary) / 2
+        lane_half_width = (right_boundary - left_boundary) / 2
+        
+        # obstacle_x_norm = -1..1 относительно центра кадра -> -1..1 относительно центра полосы
+        # Просто считаем, что полоса и кадр совпадают по центру
+        y_norm_relative = (self.obstacle_x_norm + 1) / 2  # -1..1 -> 0..1
+        
+        # Ограничиваем в пределах полосы (0..1)
+        y_norm = np.clip(y_norm_relative, 0.0, 1.0)
+        
+        # 3. Параметры формулы
+        alpha = 1.5  # степень отталкивания (0.5-2.0)
+        eps = 1e-6   # для избежания деления на 0
+        
+        # 4. Масштабируем alpha в зависимости от расстояния
+        # Чем ближе препятствие - тем сильнее отталкивание
+        distance_factor = 1.0 - min(self.min_distance / 0.5, 1.0)  # 0.5м - максимальная сила
+        alpha_scaled = alpha * distance_factor
+        
+        # 5. Применяем вашу формулу
+        diff = y_norm - x_norm
+        direction = diff / (abs(diff) + eps)  # -1 или +1
+        
+        # Основная формула
+        res_norm = x_norm - alpha_scaled * direction * x_norm * (1 - x_norm)
+        
+        # 6. Ограничиваем результат 0..1
+        res_norm = np.clip(res_norm, 0.0, 1.0)
+        
+        # 7. Преобразуем обратно в пиксели
+        avoidance_x = left_boundary + res_norm * (right_boundary - left_boundary)
+        
+        # 8. Дополнительная логика для экстремальных случаев
+        if self.min_distance < 0.3:  # Очень близко (30см)
+            # Усиливаем отталкивание
+            if y_norm < 0.5:  # Препятствие в левой половине
+                # Сильно смещаемся вправо
+                avoidance_x = right_boundary - (right_boundary - left_boundary) * 0.2
+            else:  # Препятствие в правой половине
+                # Сильно смещаемся влево
+                avoidance_x = left_boundary + (right_boundary - left_boundary) * 0.2
+        
+        # 9. Логирование
+        self.get_logger().info(
+            f"Avoidance formula: "
+            f"x_norm={x_norm:.2f}, "
+            f"y_norm={y_norm:.2f} (raw={self.obstacle_x_norm:.2f}), "
+            f"dist={self.min_distance:.2f}m, "
+            f"alpha={alpha_scaled:.2f}, "
+            f"res_norm={res_norm:.2f}, "
+            f"avoidance={avoidance_x:.0f}px"
+        )
+        
+        return avoidance_x
 
 
     def imu_callback(self, msg: Imu):
@@ -289,6 +534,7 @@ class BaseNode(Node):
         # Crop bottom portion where lanes are nearer
         crop_h = h // 2
         roi = cv_image[h - crop_h:h, 0:w]
+        roi_h, roi_w = roi.shape[:2]
 
         # Preprocess
         blurred = cv2.GaussianBlur(roi, (5, 5), 0)
@@ -312,6 +558,9 @@ class BaseNode(Node):
 
         self.started = True
         if self.started:
+            left_boundary, right_boundary = self._get_lane_boundaries(
+                yellow_mask, white_mask, roi_w, roi_h
+            )
 
             tmp_sign, right_pixels, left_pixels = self.detect_turn_sign(cv_image, 10000)
                 
@@ -322,7 +571,18 @@ class BaseNode(Node):
                 self.sign = tmp_sign
                 self.flag_sign = 0
             
+            # left_boundary, right_boundary = self._get_lane_boundaries(
+            #     yellow_mask, white_mask, roi_h, roi_w
+            # )
+
+            # Compute target and error
             self.x_target = self._compute_lane_target(roi, min_area=2000)
+
+            # объезд препятствий
+            if self.min_distance is not None and self.min_distance < float('inf'):
+                self.x_target = self.compute_avoidance_x(
+                    self.x_target, left_boundary, right_boundary
+                )
             image_center_x = w / 2.0 
 
             # self.x_target = (self.x_target + (image_center_x + self.sign * image_center_x)) / 2
@@ -365,6 +625,18 @@ class BaseNode(Node):
         combined_mask = cv2.bitwise_or(mask_vis, mask_vis2)
         h_small = h // 3
         debug[0:h_small, 0:(w // 3)] = cv2.resize(combined_mask, (w // 3, h_small))
+
+        if self.started:
+            left_int = int(left_boundary)
+            right_int = int(right_boundary)
+            target_int = int(self.x_target)
+            
+            cv2.line(debug, (left_int, h), (left_int, h - crop_h), 
+                    (0, 255, 255), 2)  # желтая
+            cv2.line(debug, (right_int, h), (right_int, h - crop_h), 
+                    (255, 255, 255), 2)  # белая
+            cv2.line(debug, (target_int, h), (target_int, h - crop_h), 
+                    (0, 255, 0), 3)  # зеленая
 
         self.output.write(debug)
     
