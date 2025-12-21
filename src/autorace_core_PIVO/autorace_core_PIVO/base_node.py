@@ -406,13 +406,15 @@ class BaseNode(Node):
     def detect_turn_sign(self, image, min_blue_area=500):
         """
         Returns:
-            0  - no sign
-            1  - turn right
-            -1  - turn left
+            flag            :  0 (no sign), 1 (right), -1 (left)
+            tmp_x_target    :  x center of sign, -1 if none
+            right_pixels
+            left_pixels
+            area
         """
 
         h, w = image.shape[:2]
-        mid_image = image #[h//4 : 3*h//4, :]
+        mid_image = image  # [h//4 : 3*h//4, :]
 
         hsv = cv2.cvtColor(mid_image, cv2.COLOR_BGR2HSV)
         blue_lower = np.array([95, 120, 70])
@@ -441,15 +443,17 @@ class BaseNode(Node):
             if roi.size == 0:
                 continue
 
-            h, w = roi.shape
-            left_pixels = np.count_nonzero(roi[h // 2:, :w // 2])
-            right_pixels = np.count_nonzero(roi[h // 2:, w // 2:])
+            hh, ww = roi.shape
+            left_pixels = np.count_nonzero(roi[hh // 2 :, : ww // 2])
+            right_pixels = np.count_nonzero(roi[hh // 2 :, ww // 2 :])
 
             flag = 1 if right_pixels > left_pixels else -1
 
-            return flag, right_pixels, left_pixels
+            tmp_x_target = cx
 
-        return 0, 0, 0
+            return flag, tmp_x_target, right_pixels, left_pixels, area
+
+        return 0, -1, 0, 0, 0
 
 
     def _detect_green_light(self, image, min_area=1500):
@@ -471,12 +475,13 @@ class BaseNode(Node):
             self.get_logger().error(f"CvBridge error: {e}")
             return
 
+        # self._detect_aruco_marker(cv_image)
+
         h, w = cv_image.shape[:2]
 
         # Crop bottom portion where lanes are nearer
         crop_h = h // 2
         roi = cv_image[h - crop_h:h, 0:w]
-        roi_h, roi_w = roi.shape[:2]
 
         # Preprocess
         blurred = cv2.GaussianBlur(roi, (5, 5), 0)
@@ -498,35 +503,38 @@ class BaseNode(Node):
         if self._detect_green_light(cv_image):
             self.started = True
 
-        self.started = True
+        # self.started = True
         if self.started:
             # left_boundary, right_boundary = self._get_lane_boundaries(
             #     yellow_mask, white_mask, roi_w, roi_h
             # )
+            left_boundary = 0
+            right_boundary = 0
 
-            tmp_sign, right_pixels, left_pixels = self.detect_turn_sign(cv_image, 10000)
+            tmp_sign, tmp_x_target, right_pixels, left_pixels, area = self.detect_turn_sign(cv_image, 500)
+            image_center_x = w / 2.0
                 
-            if tmp_sign != 0 and self.flag_sign == 0:
-                self.sign = tmp_sign
-                self.flag_sign = 1
-            elif tmp_sign == 0 and self.flag_sign == 1:
-                self.sign = tmp_sign
-                self.flag_sign = 0
-            
-            # Compute target and error
-            self.x_target, left_boundary, right_boundary = self._compute_lane_target(roi, min_area=2000)
+
+            if tmp_x_target == -1:
+                self.x_target, left_boundary, right_boundary = self._compute_lane_target(roi, min_area=2000)
+            elif area < 15000:
+                self.x_target = tmp_x_target
+            else:
+                if self.flag_sign:
+                    self.sign = tmp_sign
+                    self.flag_sign = 0
+
+                self.x_target = self.x_target if self.sign == 0 else image_center_x + self.sign * image_center_x
+
+
 
             # объезд препятствий
-            if self.min_distance is not None and self.min_distance < float('inf'):
+            if self.min_distance is not None and self.min_distance < float('inf') and tmp_x_target == -1:
                 self.x_target = self.compute_avoidance_x(
                     self.x_target, left_boundary, right_boundary
                 )
-            image_center_x = w / 2.0 
 
-            # self.x_target = (self.x_target + (image_center_x + self.sign * image_center_x)) / 2
-            self.x_target = self.x_target if self.sign == 0 else (image_center_x + self.sign * image_center_x)
-
-            self.get_logger().info(f"{"❕" if self.sign == 0 else "❗"} sign {self.sign}| target {self.x_target}")
+            self.get_logger().info(f"{"❕" if self.sign == 0 else "❗"} flag {self.flag_sign} | sign {self.sign} | area {area} | target {self.x_target} | tmp_trg {tmp_x_target}")
 
             self.x_target = self.x_target - self.beta * (self.x_target - self.last_x_target)
             self.last_x_target = self.x_target
@@ -668,10 +676,10 @@ class BaseNode(Node):
         #         yellow_x = margin_px
         #         cx = max(white_x - int(w * 0.2), int(w * 0.3))
 
-        self.get_logger().info(
-            f"Lane detection: yellow_x={yellow_x}, white_x={white_x}, "
-            f"center={cx}, lane_width={lane_width}"
-        )
+        # self.get_logger().info(
+        #     f"Lane detection: yellow_x={yellow_x}, white_x={white_x}, "
+        #     f"center={cx}, lane_width={lane_width}"
+        # )
 
         return cx, yellow_x, white_x
     
