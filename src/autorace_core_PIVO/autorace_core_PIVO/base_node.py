@@ -85,6 +85,7 @@ class BaseNode(Node):
         # self.depth_processing_enabled = False
         self.last_depth_time = 0
         self.current_ros_time = None
+        self.first_time = None
 
         # self.depth_callback_group = ReentrantCallbackGroup()
         
@@ -202,6 +203,8 @@ class BaseNode(Node):
     def clock_callback(self, msg: Clock):
         self.pid.update_time(msg)
         self.current_ros_time = msg.clock.sec + msg.clock.nanosec * 1e-9
+        if self.first_time == None:
+            self.first_time = self.current_ros_time
 
 
     def scan_callback(self, msg: LaserScan):
@@ -250,13 +253,14 @@ class BaseNode(Node):
         cols = indices % width
         
         # Маска для высоты (верхние window_height_ratio%)
-        height_mask = rows < (height * window_height_ratio)
+        height_mask1 = rows < (height * window_height_ratio)
+        height_mask2 = rows > (height * 0.15)
         
         # Маска для ширины (отступы width_margin_ratio с каждой стороны)
         width_mask = (cols >= (width * width_margin_ratio)) & (cols < (width * (1 - width_margin_ratio)))
         
         # Общая маска окна
-        window_mask = height_mask & width_mask
+        window_mask = height_mask1 & width_mask & height_mask2
         
         # Берем только точки в окне (и их координаты)
         window_points = points_array[window_mask]
@@ -371,6 +375,14 @@ class BaseNode(Node):
         
         diff = y_norm - x_norm
         direction = diff / (abs(diff) + eps)  # -1 или +1
+        
+        if self.current_ros_time - self.first_time > 71 and self.current_ros_time - self.first_time < 75:
+            # просто теперь ближайшая граница определяет направление (примерно на этих секундах робот встречает последние конусы)
+            
+            left_boundary_factor = lane_target_x - left_boundary / (right_boundary-left_boundary)
+            right_boundary_factor = right_boundary - lane_target_x / (right_boundary-left_boundary)
+            boundary_factor = right_boundary_factor - left_boundary_factor
+            direction = boundary_factor / (abs(boundary_factor) + eps)
         
         # Основная формула
         res_norm = x_norm - alpha_scaled * direction * x_norm * (1 - x_norm)
@@ -654,20 +666,7 @@ class BaseNode(Node):
                 cx = w * 0.3
 
         lane_width = white_x - yellow_x
-        # if lane_width > w * 0.6:  # Слишком широкая полоса
-        #     # Предполагаем, что одна из линий потеряна
-        #     if yellow_x < w * 0.2 and white_x > w * 0.8:
-        #         # Вероятно, есть обе линии, но мы далеко
-        #         pass  # Оставляем вычисленный центр
-        #     elif yellow_x < w * 0.2:
-        #         # Только желтая линия видна, белая потеряна
-        #         white_x = w - margin_px
-        #         cx = min(yellow_x + int(w * 0.2), int(w * 0.7))
-        #     elif white_x > w * 0.8:
-        #         # Только белая линия видна, желтая потеряна
-        #         yellow_x = margin_px
-        #         cx = max(white_x - int(w * 0.2), int(w * 0.3))
-
+        
         self.get_logger().info(
             f"Lane detection: yellow_x={yellow_x}, white_x={white_x}, "
             f"center={cx}, lane_width={lane_width}"
