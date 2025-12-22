@@ -179,8 +179,8 @@ class BaseNode(Node):
         self.current_checkpoint_index = 0
         self.special_avoidance_mode = False
         self.checkpoints = [
-            {'x': 0.9540668182366147, 'y': 3.4298825170464355, 'z': 0.0, 'reached': False, 'distance_threshold': 0.2},
-            {'x': 0.6, 'y': 3.962901778906285, 'z': 0.0, 'reached': False, 'distance_threshold': 0.3}
+            {'x': 0.9540668182366147, 'y': 3.4298825170464355, 'z': 0.0, 'reached': False, 'distance_threshold': 0.3},
+            {'x': 0.6, 'y': 3.962901778906285, 'z': 0.0, 'reached': False, 'distance_threshold': 0.4}
         ]
 
 
@@ -446,10 +446,35 @@ class BaseNode(Node):
         direction = diff / (abs(diff) + eps)  # -1 или +1
         
         if self.special_avoidance_mode and self.current_checkpoint_index == 1:
-            left_boundary_factor = (lane_target_x - left_boundary) / (right_boundary - left_boundary)
-            right_boundary_factor = (right_boundary - lane_target_x) / (right_boundary - left_boundary)
-            boundary_factor = right_boundary_factor - left_boundary_factor
-            direction = boundary_factor / (abs(boundary_factor) + eps)
+
+            target_point = self.checkpoints[1]  # Вторая точка
+            # Вычисляем направление от текущей позиции к целевой точке
+            # В мировых координатах
+            dx = target_point['x'] - self.robot_position['x']
+            dy = target_point['y'] - self.robot_position['y']
+            
+            # Вычисляем угол к цели
+            target_angle = np.arctan2(dy, dx)  # угол в радианах
+            
+            fov_rad = 1.047  # 60 градусов
+            
+            # Ограничиваем угол в пределах FOV камеры
+            target_angle = np.clip(target_angle, -fov_rad/2, fov_rad/2)
+            
+            # Преобразуем угол в нормализованную координату (-1..1)
+            target_norm = target_angle / (fov_rad / 2)
+            
+            # Преобразуем -1..1 в 0..1 относительно полосы
+            target_norm_lane = (target_norm + 1) / 2
+            
+            # Теперь используем target_norm_lane как целевую точку
+            # вместо вычисления через границы
+            
+            # Вычисляем разницу между текущей целью и целевой точкой
+            diff_to_target = target_norm_lane - x_norm
+            
+            # Направление к целевой точке
+            direction = diff_to_target / (abs(diff_to_target) + eps)
         
         # Основная формула
         res_norm = x_norm - alpha_scaled * direction * x_norm * (1 - x_norm)
