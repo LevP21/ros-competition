@@ -179,9 +179,10 @@ class BaseNode(Node):
         self.current_checkpoint_index = 0
         self.special_avoidance_mode = False
         self.checkpoints = [
-            {'x': 1.83, 'y': 1.78, 'z': 0.0, 'reached': False, 'distance_threshold': 0.3},
-            {'x': 2.12, 'y': 1.47, 'z': 0.0, 'reached': False, 'distance_threshold': 0.3}
+            {'x': 0.9540668182366147, 'y': 3.4298825170464355, 'z': 0.0, 'reached': False, 'distance_threshold': 0.2},
+            {'x': 0.6, 'y': 3.962901778906285, 'z': 0.0, 'reached': False, 'distance_threshold': 0.3}
         ]
+
 
 
         self.yellow_lower = np.array([27, 120, 120])
