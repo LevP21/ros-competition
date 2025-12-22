@@ -8,6 +8,7 @@ from sensor_msgs.msg import LaserScan, PointCloud2, Image, CameraInfo, Imu
 from geometry_msgs.msg import Twist
 from std_msgs.msg import Float32, String
 from rosgraph_msgs.msg import Clock
+from nav_msgs.msg import Odometry
 from cv_bridge import CvBridge, CvBridgeError
 import time
 
@@ -142,7 +143,13 @@ class BaseNode(Node):
             '/depth/points',
             self.depth_point_callback,
             10,
-            # callback_group=self.depth_callback_group
+        )
+
+        self.odom = self.create_subscription(
+            Odometry,
+            '/odom',
+            self.odom_callback,
+            10,
         )
 
         self.cmd_pub = self.create_publisher(
@@ -172,9 +179,9 @@ class BaseNode(Node):
         self.kp = 4.0
         self.ki = 0.0
         self.kd = 1.5
-        self.max_angular = 1.2
+        self.max_angular = 1.0
 
-        self.max_speed = 0.2
+        self.max_speed = 0.3
         self.min_speed = 0.1
         self.speed_reduction_factor = 0.8
 
@@ -189,8 +196,8 @@ class BaseNode(Node):
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
 
         #! Путь для записи видео
-        self.output = cv2.VideoWriter("/home/babrakadabra/ros-competition/output.mp4", fourcc, 30, (848, 480))
-        self.depth_output = cv2.VideoWriter("/home/babrakadabra/ros-competition/depth_output.mp4", fourcc, 10, (848, 480))
+        self.output = cv2.VideoWriter("/mnt/d/ros/competition/output.mp4", fourcc, 30, (848, 480))
+        self.depth_output = cv2.VideoWriter("/mnt/d/ros/competition/depth_output.mp4", fourcc, 10, (848, 480))
 
         self.green_lower = np.array([40, 80, 80])
         self.green_upper = np.array([80, 255, 255])
@@ -205,10 +212,43 @@ class BaseNode(Node):
         self.aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_6X6_250)
         self.aruco_params = cv2.aruco.DetectorParameters_create()
 
+        x0 = 1.15      # метры
+        y0 = -2.2      # метры
+        theta0 = 0.0   # радианы
+
+        # self.x0 = -2.14
+        # self.y0 = 0.53
+        # self.theta0 = -1.57
+
+        self.robot_position = {'x': self.x0, 'y': self.y0, 'theta': self.theta0}
+
+        self.current_checkpoint_index = 0
+        self.checkpoints = [
+            {'x': -2.14, 'y': 0.53, 'reached': False, 'distance_threshold': 0.4},
+            {'x': 0.5, 'y': -2.20, 'reached': False, 'distance_threshold': 0.4},
+            {'x': 1.27, 'y': -2.20, 'reached': False, 'distance_threshold': 0.4}
+        ]
+
+        self.tunnel_mode = False
+        self.finished = False
+        self.message_sent = False
+
 
     def clock_callback(self, msg: Clock):
         self.pid.update_time(msg)
         self.current_ros_time = msg.clock.sec + msg.clock.nanosec * 1e-9
+
+
+    def odom_callback(self, msg: Odometry):
+        x_odom = msg.pose.pose.position.x
+        y_odom = msg.pose.pose.position.y
+
+        self.robot_position['x'] = self.x0 + x_odom * np.cos(self.theta0) - y_odom * np.sin(self.theta0)
+        self.robot_position['y'] = self.y0 + x_odom * np.sin(self.theta0) + y_odom * np.cos(self.theta0)
+
+        self.get_logger().info(f"Robot position x: {self.robot_position['x']}, y: {self.robot_position['y']}")
+
+        self._check_checkpoints_reached()
 
 
     def scan_callback(self, msg: LaserScan):
@@ -225,6 +265,41 @@ class BaseNode(Node):
 
     def color_info_callback(self, msg: CameraInfo):
         pass
+
+
+    def _check_checkpoints_reached(self):
+        if self.robot_position is None:
+            return
+        
+        if self.current_checkpoint_index >= len(self.checkpoints):
+            self.special_avoidance_mode = False
+            self.current_checkpoint_index = -1
+            return
+        
+        current_checkpoint = self.checkpoints[self.current_checkpoint_index]
+        
+        dx = self.robot_position['x'] - current_checkpoint['x']
+        dy = self.robot_position['y'] - current_checkpoint['y']
+        distance = np.sqrt(dx**2 + dy**2)
+        
+        if distance < current_checkpoint['distance_threshold'] and not current_checkpoint['reached']:
+            current_checkpoint['reached'] = True
+            self.current_checkpoint_index += 1
+            
+            self.get_logger().info(
+                f"✅ Checkpoint {self.current_checkpoint_index} reached! "
+                f"Distance: {distance:.3f}m"
+            )
+            
+            if self.current_checkpoint_index == 1:
+                self.tunnel_mode = True
+                self.get_logger().info("✅ Tunnel mode ACTIVATED")
+            elif self.current_checkpoint_index == 2:
+                self.tunnel_mode = False
+                self.get_logger().info("✅ Tunnel mode DEACTIVATED")
+            elif self.current_checkpoint_index == 3:
+                self.finish = True
+                self.get_logger().info("✅ Finished mode ACTIVATED")
 
 
     def _min_distance_in_window(self, pc: PointCloud2, window_height_ratio=0.5, width_margin_ratio=0.0):
@@ -515,6 +590,23 @@ class BaseNode(Node):
         except CvBridgeError as e:
             self.get_logger().error(f"CvBridge error: {e}")
             return
+        
+        if self.finished:
+            if not self.message_sent:
+                str_msg = String()
+                str_msg.data = "PIVO is all you need"
+
+                self.finish.publish(str_msg)
+
+                self.message_sent = True
+
+            twist = Twist()
+            twist.linear.x = 0.0
+            twist.angular.z = 0.0
+            self.cmd_pub.publish(twist)
+
+            return
+
 
         self._detect_aruco_marker(cv_image)
 
@@ -568,10 +660,8 @@ class BaseNode(Node):
 
                 self.x_target = self.x_target if self.sign == 0 else image_center_x + self.sign * image_center_x
 
-
-
             # объезд препятствий
-            if self.min_distance is not None and self.min_distance < float('inf') and tmp_x_target == -1:
+            if self.min_distance is not None and self.min_distance < float('inf') and tmp_x_target == -1 and not self.tunnel_mode:
                 self.x_target = self.compute_avoidance_x(
                     self.x_target, left_boundary, right_boundary
                 )
@@ -588,6 +678,9 @@ class BaseNode(Node):
 
             ang = self.pid.compute(norm_error)
 
+            if self.tunnel_mode:
+                ang -= 0.1
+
             # Compute forward speed with penalties
             steering_penalty = min(abs(ang) * self.speed_reduction_factor, 1.0)
             edge_penalty = max(0.0, abs(norm_error) - 0.7)
@@ -595,7 +688,7 @@ class BaseNode(Node):
 
             obstacle_penalty = 0.0
     
-            if self.min_distance is not None and self.min_distance < float('inf'):
+            if self.min_distance is not None and self.min_distance < float('inf') and not self.tunnel_mode:
                 obstacle_penalty = 1.0 - (self.min_distance / 0.7)
                 
                 # Дополнительный штраф, если препятствие прямо по курсу
@@ -608,7 +701,7 @@ class BaseNode(Node):
             speed = self.max_speed * (1.0 - total_penalty)
             speed = max(min(speed, self.max_speed), self.min_speed)
             
-            if self.min_distance is not None and self.min_distance < 0.05:
+            if self.min_distance is not None and self.min_distance < 0.05 and not self.tunnel_mode:
                 speed = 0.0
                 self.get_logger().warn("⚠️ VERY CLOSE OBSTACLE - STOPPING!")
                 # можно добавить логику движения назад
