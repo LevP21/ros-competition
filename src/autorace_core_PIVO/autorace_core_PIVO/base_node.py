@@ -12,7 +12,7 @@ from cv_bridge import CvBridge, CvBridgeError
 import time
 
 from sensor_msgs_py.point_cloud2 import read_points
-
+from nav_msgs.msg import Odometry
 
 
 class PID:
@@ -164,6 +164,26 @@ class BaseNode(Node):
             10
         )
 
+         # Подписка на одометрию
+        self.odom_sub = self.create_subscription(
+            Odometry,
+            '/odom',
+            self.odom_callback,
+            10
+        )
+        
+        # Позиция робота
+        self.robot_position = {'x': 0.0, 'y': 0.0, 'z': 0.0}
+        # self.robot_orientation = {'roll': 0.0, 'pitch': 0.0, 'yaw': 0.0}
+        self.robot_pose_initialized = False
+        self.current_checkpoint_index = 0
+        self.special_avoidance_mode = False
+        self.checkpoints = [
+            {'x': 1.83, 'y': 1.78, 'z': 0.0, 'reached': False, 'distance_threshold': 0.3},
+            {'x': 2.12, 'y': 1.47, 'z': 0.0, 'reached': False, 'distance_threshold': 0.3}
+        ]
+
+
         self.yellow_lower = np.array([27, 120, 120])
         self.yellow_upper = np.array([35, 255, 255])
         self.white_lower = np.array([0, 0, 200])
@@ -199,6 +219,54 @@ class BaseNode(Node):
         self.x_target = 0
         self.flag_sign = 0
         self.sign = 0
+    
+    def odom_callback(self, msg: Odometry):
+        if self.current_checkpoint_index != -1:
+            self.robot_position['x'] = msg.pose.pose.position.x
+            self.robot_position['y'] = msg.pose.pose.position.y
+            self.robot_position['z'] = msg.pose.pose.position.z
+            self.get_logger().info(
+                f"robot_pose: {self.robot_position}"
+            )
+            self.robot_pose_initialized = True
+        
+            self._check_checkpoints_reached()
+        else:
+            self.get_logger().info(
+                f"низя"
+            )
+    
+    def _check_checkpoints_reached(self):
+        if self.robot_position is None:
+            return
+        
+        if self.current_checkpoint_index >= len(self.checkpoints):
+            self.special_avoidance_mode = False
+            self.current_checkpoint_index = -1
+            return
+        
+        current_checkpoint = self.checkpoints[self.current_checkpoint_index]
+        
+        dx = self.robot_position['x'] - current_checkpoint['x']
+        dy = self.robot_position['y'] - current_checkpoint['y']
+        dz = self.robot_position['z'] - current_checkpoint['z']
+        distance = np.sqrt(dx**2 + dy**2 + dz**2)
+        
+        if distance < current_checkpoint['distance_threshold'] and not current_checkpoint['reached']:
+            current_checkpoint['reached'] = True
+            self.current_checkpoint_index += 1
+            
+            self.get_logger().info(
+                f"✅ Checkpoint {self.current_checkpoint_index} reached! "
+                f"Distance: {distance:.3f}m"
+            )
+            
+            if self.current_checkpoint_index == 1:
+                self.special_avoidance_mode = True
+                self.get_logger().info("🔶 Special avoidance mode ACTIVATED")
+            elif self.current_checkpoint_index == 2:
+                self.special_avoidance_mode = False
+                self.get_logger().info("✅ Special avoidance mode DEACTIVATED")
 
     def clock_callback(self, msg: Clock):
         self.pid.update_time(msg)
@@ -376,24 +444,20 @@ class BaseNode(Node):
         diff = y_norm - x_norm
         direction = diff / (abs(diff) + eps)  # -1 или +1
         
-        if self.current_ros_time - self.first_time > 71 and self.current_ros_time - self.first_time < 75:
-            # просто теперь ближайшая граница определяет направление (примерно на этих секундах робот встречает последние конусы)
-            
-            left_boundary_factor = lane_target_x - left_boundary / (right_boundary-left_boundary)
-            right_boundary_factor = right_boundary - lane_target_x / (right_boundary-left_boundary)
+        if self.special_avoidance_mode and self.current_checkpoint_index == 1:
+            left_boundary_factor = (lane_target_x - left_boundary) / (right_boundary - left_boundary)
+            right_boundary_factor = (right_boundary - lane_target_x) / (right_boundary - left_boundary)
             boundary_factor = right_boundary_factor - left_boundary_factor
             direction = boundary_factor / (abs(boundary_factor) + eps)
         
         # Основная формула
         res_norm = x_norm - alpha_scaled * direction * x_norm * (1 - x_norm)
         
-        # 6. Ограничиваем результат 0..1
         res_norm = np.clip(res_norm, 0.0, 1.0)
         
-        # 7. Преобразуем обратно в пиксели
+        # Преобразуем обратно в пиксели
         avoidance_x = left_boundary + res_norm * (right_boundary - left_boundary)
         
-        # 9. Логирование
         self.get_logger().info(
             f"Avoidance formula: "
             f"x_norm={x_norm:.2f}, "
@@ -666,7 +730,7 @@ class BaseNode(Node):
                 cx = w * 0.3
 
         lane_width = white_x - yellow_x
-        
+
         self.get_logger().info(
             f"Lane detection: yellow_x={yellow_x}, white_x={white_x}, "
             f"center={cx}, lane_width={lane_width}"
