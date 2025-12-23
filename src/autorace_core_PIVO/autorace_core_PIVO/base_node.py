@@ -10,10 +10,8 @@ from std_msgs.msg import Float32, String
 from rosgraph_msgs.msg import Clock
 from nav_msgs.msg import Odometry
 from cv_bridge import CvBridge, CvBridgeError
-import time
 
 from sensor_msgs_py.point_cloud2 import read_points
-from nav_msgs.msg import Odometry
 
 
 class PID:
@@ -83,25 +81,15 @@ class BaseNode(Node):
         self.min_distance = float('inf')
         self.obstacle_x_norm = float('inf')
         self.DEPTH_THRESHOLD = 0.5
-        # self.depth_processing_enabled = False
         self.last_depth_time = 0
         self.current_ros_time = None
         self.first_time = None
-
-        # self.depth_callback_group = ReentrantCallbackGroup()
         
         self.clock = self.create_subscription(
             Clock,
             '/clock',
             self.clock_callback,
             10
-        )
-
-        self.scan = self.create_subscription(
-            LaserScan,
-            '/scan',
-            self.scan_callback,
-            10,
         )
 
         self.depth_image = self.create_subscription(
@@ -115,27 +103,6 @@ class BaseNode(Node):
             Image,
             '/color/image',
             self.color_image_callback,
-            10,
-        )
-
-        self.depth_info = self.create_subscription(
-            CameraInfo,
-            '/depth/camera_info',
-            self.depth_info_callback,
-            10,
-        )
-
-        self.color_info = self.create_subscription(
-            CameraInfo,
-            '/color/camera_info',
-            self.color_info_callback,
-            10,
-        )
-
-        self.imu = self.create_subscription(
-            Imu,
-            '/imu',
-            self.imu_callback,
             10,
         )
 
@@ -194,11 +161,11 @@ class BaseNode(Node):
         self.bridge = CvBridge()
 
         self.started = False
-        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        # fourcc = cv2.VideoWriter_fourcc(*"mp4v")
 
-        #! Путь для записи видео
-        self.output = cv2.VideoWriter("/home/ilya/Documents/ros-competition/output.mp4", fourcc, 30, (848, 480))
-        self.depth_output = cv2.VideoWriter("/home/ilya/Documents/ros-competition/depth_output.mp4", fourcc, 10, (848, 480))
+        # # Путь для записи видео
+        # self.output = cv2.VideoWriter("/home/ilya/Documents/ros-competition/output.mp4", fourcc, 30, (848, 480))
+        # self.depth_output = cv2.VideoWriter("/home/ilya/Documents/ros-competition/depth_output.mp4", fourcc, 10, (848, 480))
 
         self.green_lower = np.array([40, 80, 80])
         self.green_upper = np.array([80, 255, 255])
@@ -217,10 +184,6 @@ class BaseNode(Node):
         self.x0 = 1.15      # метры
         self.y0 = -2.2      # метры
         self.theta0 = 0.0   # радианы
-
-        # self.x0 = -2.14
-        # self.y0 = 0.53
-        # self.theta0 = -1.57
 
         self.robot_position = {'x': self.x0, 'y': self.y0, 'theta': self.theta0}
 
@@ -261,20 +224,8 @@ class BaseNode(Node):
 
         self._check_checkpoints_reached()
 
-
-    def scan_callback(self, msg: LaserScan):
-        pass
-
-
     def depth_image_callback(self, msg: Image):
-        self._save_depth_output(msg)
-
-
-    def depth_info_callback(self, msg: CameraInfo):
-        pass
-
-
-    def color_info_callback(self, msg: CameraInfo):
+        # self._save_depth_output(msg)
         pass
 
 
@@ -300,34 +251,34 @@ class BaseNode(Node):
                 current_checkpoint['reached'] = True
                 self.current_checkpoint_index += 1
                 
-                self.get_logger().info(
-                    f"✅ Checkpoint {idx} reached! "
-                    f"Distance: {distance:.3f}m"
-                )
+                # self.get_logger().info(
+                #     f"✅ Checkpoint {idx} reached! "
+                #     f"Distance: {distance:.3f}m"
+                # )
 
                 if idx == 1:
                     self.special_avoidance_mode = True
-                    self.get_logger().info("🔶 Special avoidance mode ACTIVATED")
+                    # self.get_logger().info("🔶 Special avoidance mode ACTIVATED")
                 elif idx == 2:
                     self.special_avoidance_mode = False
                     self.right_flag = 1
-                    self.get_logger().info("✅ TURN RIGHT")
-                    self.get_logger().info("✅ Special avoidance mode DEACTIVATED")
+                    # self.get_logger().info("✅ TURN RIGHT")
+                    # self.get_logger().info("✅ Special avoidance mode DEACTIVATED")
                 elif idx == 3:
                     self.left_flag = 1
-                    self.get_logger().info("✅ TURN LEFT")
+                    # self.get_logger().info("✅ TURN LEFT")
                 elif idx == 4:
                     self.aruco_flag = True
-                    self.get_logger().info("✅ AruCo flag ACTIVATED")
+                    # self.get_logger().info("✅ AruCo flag ACTIVATED")
                 elif idx == 5:
                     self.tunnel_mode = True
-                    self.get_logger().info("✅ Tunnel mode ACTIVATED")
+                    # self.get_logger().info("✅ Tunnel mode ACTIVATED")
                 elif idx == 6:
                     self.tunnel_mode = False
-                    self.get_logger().info("✅ Tunnel mode DEACTIVATED")
+                    # self.get_logger().info("✅ Tunnel mode DEACTIVATED")
                 elif idx == 7 and self.current_checkpoint_index > 0:
                     self.finished = True
-                    self.get_logger().info("✅ Finished mode ACTIVATED")
+                    # self.get_logger().info("✅ Finished mode ACTIVATED")
 
 
     def _min_distance_in_window(self, pc: PointCloud2, window_height_ratio=0.5, width_margin_ratio=0.0):
@@ -416,40 +367,6 @@ class BaseNode(Node):
             
         except Exception as e:
             self.get_logger().error(f"Depth processing error: {e}")
-
-    
-    def _get_lane_boundaries(self, yellow_mask, white_mask, width, height, bottom_ratio=0.3):
-        bottom_start = int(height * (1 - bottom_ratio))
-        margin_px = width*0.1
-        
-        # Желтая линия - левая граница
-        yellow_bottom = yellow_mask[bottom_start:, :]
-        yellow_pixels = np.column_stack(np.where(yellow_bottom > 0))
-        
-        if len(yellow_pixels) > 0:
-            # Берем 90-й перцентиль правых желтых пикселей 
-            right_yellows = np.percentile(yellow_pixels[:, 1], 90)
-            left_boundary = int(right_yellows)
-        else:
-            left_boundary = margin_px
-        
-        # Белая линия - правая граница
-        white_bottom = white_mask[bottom_start:, :]
-        white_pixels = np.column_stack(np.where(white_bottom > 0))
-        
-        if len(white_pixels) > 0:
-            # Берем 10-й перцентиль левых белых пикселей
-            left_whites = np.percentile(white_pixels[:, 1], 10)
-            right_boundary = int(left_whites)
-        else:
-            right_boundary = width - margin_px
-        
-        if left_boundary >= 0.6 * width:
-            left_boundary = margin_px
-        if right_boundary <= 0.4 * width:
-            right_boundary = width - margin_px
-        
-        return left_boundary, right_boundary
     
 
     def compute_avoidance_x(self, lane_target_x, left_boundary, right_boundary):
@@ -484,12 +401,7 @@ class BaseNode(Node):
         direction = diff / (abs(diff) + eps)  # -1 или +1
         
         if self.special_avoidance_mode:
-            # left_boundary_factor = (lane_target_x - left_boundary) / (right_boundary - left_boundary)
-            # right_boundary_factor = (right_boundary - lane_target_x) / (right_boundary - left_boundary)
-            # boundary_factor = right_boundary_factor - left_boundary_factor
-            # direction = boundary_factor / (abs(boundary_factor) + eps)
             res_norm = 0.3
-            # self.special_avoidance_mode = False
         else:
             # Основная формула
             res_norm = x_norm - alpha_scaled * direction * x_norm * (1 - x_norm)
@@ -510,10 +422,6 @@ class BaseNode(Node):
         # )
         
         return avoidance_x
-
-
-    def imu_callback(self, msg: Imu):
-        pass
 
 
     def color_image_callback(self, msg: Image):
@@ -616,7 +524,7 @@ class BaseNode(Node):
             id_msg.data = float(marker_id ** 0.5)
             self.aruco.publish(id_msg)
             
-            self.get_logger().info(f"✅ Обнаружен ArUco маркер с ID: {marker_id}")
+            # self.get_logger().info(f"✅ Обнаружен ArUco маркер с ID: {marker_id}")
             
 
     def _cv_steer(self, msg):
@@ -675,11 +583,7 @@ class BaseNode(Node):
         if self._detect_green_light(cv_image) and self.current_checkpoint_index > 0:
             self.finished = True
 
-        # self.started = True
         if self.started:
-            # left_boundary, right_boundary = self._get_lane_boundaries(
-            #     yellow_mask, white_mask, roi_w, roi_h
-            # )
             left_boundary = 0
             right_boundary = 0
 
@@ -707,7 +611,6 @@ class BaseNode(Node):
 
             # self.get_logger().info(f"{"❕" if self.sign == 0 else "❗"} flag {self.flag_sign} | sign {self.sign} | area {area} | target {self.x_target} | tmp_trg {tmp_x_target}")
             
-
             self.x_target = self.x_target - self.beta * (self.x_target - self.last_x_target)
             self.last_x_target = self.x_target
 
@@ -721,8 +624,6 @@ class BaseNode(Node):
 
             error_px = self.x_target - image_center_x
             norm_error = error_px / (w / 2.0)
-
-            # square_error = error_px * abs(error_px) / (w / 2.0)
 
             ang = self.pid.compute(norm_error)
 
@@ -751,8 +652,6 @@ class BaseNode(Node):
             
             if self.min_distance is not None and self.min_distance < 0.05 and not self.tunnel_mode:
                 speed = 0.0
-                # self.get_logger().warn("⚠️ VERY CLOSE OBSTACLE - STOPPING!")
-                # можно добавить логику движения назад
         
             # self.get_logger().info("🟢 START")
             twist = Twist()
@@ -764,27 +663,27 @@ class BaseNode(Node):
 
 
         # Debug image overlay
-        debug = cv_image.copy()
+        # debug = cv_image.copy()
 
-        mask_vis = cv2.cvtColor(yellow_mask, cv2.COLOR_GRAY2BGR)
-        mask_vis2 = cv2.cvtColor(white_mask, cv2.COLOR_GRAY2BGR)
-        combined_mask = cv2.bitwise_or(mask_vis, mask_vis2)
-        h_small = h // 3
-        debug[0:h_small, 0:(w // 3)] = cv2.resize(combined_mask, (w // 3, h_small))
+        # mask_vis = cv2.cvtColor(yellow_mask, cv2.COLOR_GRAY2BGR)
+        # mask_vis2 = cv2.cvtColor(white_mask, cv2.COLOR_GRAY2BGR)
+        # combined_mask = cv2.bitwise_or(mask_vis, mask_vis2)
+        # h_small = h // 3
+        # debug[0:h_small, 0:(w // 3)] = cv2.resize(combined_mask, (w // 3, h_small))
 
-        if self.started:
-            left_int = int(left_boundary)
-            right_int = int(right_boundary)
-            target_int = int(self.x_target)
+        # if self.started:
+        #     left_int = int(left_boundary)
+        #     right_int = int(right_boundary)
+        #     target_int = int(self.x_target)
             
-            cv2.line(debug, (left_int, h), (left_int, h - crop_h), 
-                    (0, 255, 255), 2)  # желтая
-            cv2.line(debug, (right_int, h), (right_int, h - crop_h), 
-                    (255, 255, 255), 2)  # белая
-            cv2.line(debug, (target_int, h), (target_int, h - crop_h), 
-                    (0, 255, 0), 3)  # зеленая
+        #     cv2.line(debug, (left_int, h), (left_int, h - crop_h), 
+        #             (0, 255, 255), 2)  # желтая
+        #     cv2.line(debug, (right_int, h), (right_int, h - crop_h), 
+        #             (255, 255, 255), 2)  # белая
+        #     cv2.line(debug, (target_int, h), (target_int, h - crop_h), 
+        #             (0, 255, 0), 3)  # зеленая
 
-        self.output.write(debug)
+        # self.output.write(debug)
     
 
     def _compute_lane_target(self, roi, min_area=100, bottom_ratio=0.3):
@@ -854,20 +753,20 @@ class BaseNode(Node):
         return cx, yellow_x, white_x
     
 
-    def _save_depth_output(self, msg):
-        try:
-            cv_image = self.bridge.imgmsg_to_cv2(msg)
-        except CvBridgeError as e:
-            self.get_logger().error(f"CvBridge error: {e}")
-            return
+    # def _save_depth_output(self, msg):
+    #     try:
+    #         cv_image = self.bridge.imgmsg_to_cv2(msg)
+    #     except CvBridgeError as e:
+    #         self.get_logger().error(f"CvBridge error: {e}")
+    #         return
         
-        # Depth image processing
-        img_clean = np.nan_to_num(cv_image, nan=0.0, posinf=0.0, neginf=0.0)
-        vis = cv2.normalize(img_clean, None, 0, 255, cv2.NORM_MINMAX)
-        vis = vis.astype(np.uint8)
-        vis = cv2.cvtColor(vis, cv2.COLOR_GRAY2BGR)
+    #     # Depth image processing
+    #     img_clean = np.nan_to_num(cv_image, nan=0.0, posinf=0.0, neginf=0.0)
+    #     vis = cv2.normalize(img_clean, None, 0, 255, cv2.NORM_MINMAX)
+    #     vis = vis.astype(np.uint8)
+    #     vis = cv2.cvtColor(vis, cv2.COLOR_GRAY2BGR)
         
-        self.depth_output.write(vis)
+    #     self.depth_output.write(vis)
 
 
 def main(args=None):
