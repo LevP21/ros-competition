@@ -178,19 +178,6 @@ class BaseNode(Node):
             self.odom_callback,
             10
         )
-        
-        # Позиция робота
-        self.robot_position = {'x': 0.0, 'y': 0.0, 'z': 0.0}
-        # self.robot_orientation = {'roll': 0.0, 'pitch': 0.0, 'yaw': 0.0}
-        self.robot_pose_initialized = False
-        self.current_checkpoint_index = 0
-        self.special_avoidance_mode = False
-        self.checkpoints = [
-            {'x': 0.9540668182366147, 'y': 3.4298825170464355, 'z': 0.0, 'reached': False, 'distance_threshold': 0.2},
-            {'x': 0.6, 'y': 3.962901778906285, 'z': 0.0, 'reached': False, 'distance_threshold': 0.3}
-        ]
-
-
 
         self.yellow_lower = np.array([27, 120, 120])
         self.yellow_upper = np.array([35, 255, 255])
@@ -227,54 +214,6 @@ class BaseNode(Node):
         self.x_target = 0
         self.flag_sign = 0
         self.sign = 0
-    
-    def odom_callback(self, msg: Odometry):
-        if self.current_checkpoint_index != -1:
-            self.robot_position['x'] = msg.pose.pose.position.x
-            self.robot_position['y'] = msg.pose.pose.position.y
-            self.robot_position['z'] = msg.pose.pose.position.z
-            self.get_logger().info(
-                f"robot_pose: {self.robot_position}"
-            )
-            self.robot_pose_initialized = True
-        
-            self._check_checkpoints_reached()
-        else:
-            self.get_logger().info(
-                f"низя"
-            )
-    
-    def _check_checkpoints_reached(self):
-        if self.robot_position is None:
-            return
-        
-        if self.current_checkpoint_index >= len(self.checkpoints):
-            self.special_avoidance_mode = False
-            self.current_checkpoint_index = -1
-            return
-        
-        current_checkpoint = self.checkpoints[self.current_checkpoint_index]
-        
-        dx = self.robot_position['x'] - current_checkpoint['x']
-        dy = self.robot_position['y'] - current_checkpoint['y']
-        dz = self.robot_position['z'] - current_checkpoint['z']
-        distance = np.sqrt(dx**2 + dy**2 + dz**2)
-        
-        if distance < current_checkpoint['distance_threshold'] and not current_checkpoint['reached']:
-            current_checkpoint['reached'] = True
-            self.current_checkpoint_index += 1
-            
-            self.get_logger().info(
-                f"✅ Checkpoint {self.current_checkpoint_index} reached! "
-                f"Distance: {distance:.3f}m"
-            )
-            
-            if self.current_checkpoint_index == 1:
-                self.special_avoidance_mode = True
-                self.get_logger().info("🔶 Special avoidance mode ACTIVATED")
-            elif self.current_checkpoint_index == 2:
-                self.special_avoidance_mode = False
-                self.get_logger().info("✅ Special avoidance mode DEACTIVATED")
 
         self.aruco_detected = False
         self.aruco_id = None
@@ -282,9 +221,9 @@ class BaseNode(Node):
         self.aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_6X6_250)
         self.aruco_params = cv2.aruco.DetectorParameters_create()
 
-        x0 = 1.15      # метры
-        y0 = -2.2      # метры
-        theta0 = 0.0   # радианы
+        self.x0 = 1.15      # метры
+        self.y0 = -2.2      # метры
+        self.theta0 = 0.0   # радианы
 
         # self.x0 = -2.14
         # self.y0 = 0.53
@@ -294,15 +233,17 @@ class BaseNode(Node):
 
         self.current_checkpoint_index = 0
         self.checkpoints = [
+            {'x': 2.12, 'y': 1.47, 'reached': False, 'distance_threshold': 0.3},
+            {'x': 1.83, 'y': 1.78, 'reached': False, 'distance_threshold': 0.3},
             {'x': -2.14, 'y': 0.53, 'reached': False, 'distance_threshold': 0.4},
             {'x': 0.5, 'y': -2.20, 'reached': False, 'distance_threshold': 0.4},
             {'x': 1.27, 'y': -2.20, 'reached': False, 'distance_threshold': 0.4}
         ]
 
+        self.special_avoidance_mode = False
         self.tunnel_mode = False
         self.finished = False
         self.message_sent = False
-
 
     def clock_callback(self, msg: Clock):
         self.pid.update_time(msg)
@@ -362,14 +303,20 @@ class BaseNode(Node):
                 f"✅ Checkpoint {self.current_checkpoint_index} reached! "
                 f"Distance: {distance:.3f}m"
             )
-            
+
             if self.current_checkpoint_index == 1:
+                self.special_avoidance_mode = True
+                self.get_logger().info("🔶 Special avoidance mode ACTIVATED")
+            elif self.current_checkpoint_index == 2:
+                self.special_avoidance_mode = False
+                self.get_logger().info("✅ Special avoidance mode DEACTIVATED")
+            elif self.current_checkpoint_index == 3:
                 self.tunnel_mode = True
                 self.get_logger().info("✅ Tunnel mode ACTIVATED")
-            elif self.current_checkpoint_index == 2:
+            elif self.current_checkpoint_index == 4:
                 self.tunnel_mode = False
                 self.get_logger().info("✅ Tunnel mode DEACTIVATED")
-            elif self.current_checkpoint_index == 3:
+            elif self.current_checkpoint_index == 5:
                 self.finish = True
                 self.get_logger().info("✅ Finished mode ACTIVATED")
 
