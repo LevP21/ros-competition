@@ -220,6 +220,7 @@ class BaseNode(Node):
         
         self.aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_6X6_250)
         self.aruco_params = cv2.aruco.DetectorParameters_create()
+        self.aruco_flag = False
 
         self.x0 = 1.15      # метры
         self.y0 = -2.2      # метры
@@ -235,6 +236,7 @@ class BaseNode(Node):
         self.checkpoints = [
             {'x': 2.12, 'y': 1.47, 'reached': False, 'distance_threshold': 0.3},
             {'x': 1.83, 'y': 1.78, 'reached': False, 'distance_threshold': 0.3},
+            {'x': -1.4, 'y': 1.38, 'reached': False, 'distance_threshold': 0.4},
             {'x': -2.14, 'y': 0.53, 'reached': False, 'distance_threshold': 0.4},
             {'x': 0.5, 'y': -2.20, 'reached': False, 'distance_threshold': 0.4},
             {'x': 1.27, 'y': -2.20, 'reached': False, 'distance_threshold': 0.4}
@@ -311,12 +313,15 @@ class BaseNode(Node):
                 self.special_avoidance_mode = False
                 self.get_logger().info("✅ Special avoidance mode DEACTIVATED")
             elif self.current_checkpoint_index == 3:
+                self.aruco_flag = True
+                self.get_logger().info("✅ AruCo flag ACTIVATED")
+            elif self.current_checkpoint_index == 4:
                 self.tunnel_mode = True
                 self.get_logger().info("✅ Tunnel mode ACTIVATED")
-            elif self.current_checkpoint_index == 4:
+            elif self.current_checkpoint_index == 5:
                 self.tunnel_mode = False
                 self.get_logger().info("✅ Tunnel mode DEACTIVATED")
-            elif self.current_checkpoint_index == 5:
+            elif self.current_checkpoint_index == 6:
                 self.finish = True
                 self.get_logger().info("✅ Finished mode ACTIVATED")
 
@@ -631,8 +636,9 @@ class BaseNode(Node):
 
             return
 
-
-        self._detect_aruco_marker(cv_image)
+        if self.aruco_flag:
+            self._detect_aruco_marker(cv_image)
+            self.aruco_flag = False
 
         h, w = cv_image.shape[:2]
 
