@@ -171,14 +171,6 @@ class BaseNode(Node):
             10
         )
 
-         # Подписка на одометрию
-        self.odom_sub = self.create_subscription(
-            Odometry,
-            '/odom',
-            self.odom_callback,
-            10
-        )
-
         self.yellow_lower = np.array([27, 120, 120])
         self.yellow_upper = np.array([35, 255, 255])
         self.white_lower = np.array([0, 0, 200])
@@ -187,10 +179,10 @@ class BaseNode(Node):
         # PID & speed params
         self.kp = 4.0
         self.ki = 0.0
-        self.kd = 1.5
-        self.max_angular = 1.0
+        self.kd = 2.0
+        self.max_angular = 1.5
 
-        self.max_speed = 0.3
+        self.max_speed = 0.2
         self.min_speed = 0.1
         self.speed_reduction_factor = 0.8
 
@@ -205,14 +197,14 @@ class BaseNode(Node):
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
 
         #! Путь для записи видео
-        self.output = cv2.VideoWriter("/mnt/d/ros/competition/output.mp4", fourcc, 30, (848, 480))
-        self.depth_output = cv2.VideoWriter("/mnt/d/ros/competition/depth_output.mp4", fourcc, 10, (848, 480))
+        self.output = cv2.VideoWriter("/home/ilya/Documents/ros-competition/output.mp4", fourcc, 30, (848, 480))
+        self.depth_output = cv2.VideoWriter("/home/ilya/Documents/ros-competition/depth_output.mp4", fourcc, 10, (848, 480))
 
         self.green_lower = np.array([40, 80, 80])
         self.green_upper = np.array([80, 255, 255])
 
         self.x_target = 0
-        self.flag_sign = 0
+        self.flag_sign = 1
         self.sign = 0
 
         self.aruco_detected = False
@@ -233,19 +225,23 @@ class BaseNode(Node):
         self.robot_position = {'x': self.x0, 'y': self.y0, 'theta': self.theta0}
 
         self.current_checkpoint_index = 0
+
         self.checkpoints = [
-            {'x': 2.12, 'y': 1.47, 'reached': False, 'distance_threshold': 0.3},
-            {'x': 1.83, 'y': 1.78, 'reached': False, 'distance_threshold': 0.3},
-            {'x': -1.4, 'y': 1.38, 'reached': False, 'distance_threshold': 0.4},
-            {'x': -2.14, 'y': 0.53, 'reached': False, 'distance_threshold': 0.4},
-            {'x': 0.5, 'y': -2.20, 'reached': False, 'distance_threshold': 0.4},
-            {'x': 1.27, 'y': -2.20, 'reached': False, 'distance_threshold': 0.4}
+            {'x': 2.12, 'y': 1.47, 'reached': False, 'distance_threshold': 0.3, 'idx': 1},
+            {'x': 1.83, 'y': 1.6, 'reached': False, 'distance_threshold': 0.2, 'idx': 2},
+            {'x': 1.8, 'y': 2.05, 'reached': False, 'distance_threshold': 0.3, 'idx': 3},
+            {'x': -1.4, 'y': 1.38, 'reached': False, 'distance_threshold': 0.4, 'idx': 4},
+            {'x': -2.14, 'y': 0.53, 'reached': False, 'distance_threshold': 0.4, 'idx': 5},
+            {'x': 0.0, 'y': -2.2, 'reached': False, 'distance_threshold': 0.5, 'idx': 6},
+            {'x': 1.0, 'y': -2.2, 'reached': False, 'distance_threshold': 0.5, 'idx': 7}
         ]
 
         self.special_avoidance_mode = False
         self.tunnel_mode = False
         self.finished = False
         self.message_sent = False
+        self.right_flag = 0
+        self.left_flag = 0
 
     def clock_callback(self, msg: Clock):
         self.pid.update_time(msg)
@@ -261,7 +257,7 @@ class BaseNode(Node):
         self.robot_position['x'] = self.x0 + x_odom * np.cos(self.theta0) - y_odom * np.sin(self.theta0)
         self.robot_position['y'] = self.y0 + x_odom * np.sin(self.theta0) + y_odom * np.cos(self.theta0)
 
-        self.get_logger().info(f"Robot position x: {self.robot_position['x']}, y: {self.robot_position['y']}")
+        # self.get_logger().info(f"Robot position x: {self.robot_position['x']}, y: {self.robot_position['y']}")
 
         self._check_checkpoints_reached()
 
@@ -291,39 +287,47 @@ class BaseNode(Node):
             self.current_checkpoint_index = -1
             return
         
-        current_checkpoint = self.checkpoints[self.current_checkpoint_index]
+        for idx in range(1, len(self.checkpoints)+1):
+            current_checkpoint = self.checkpoints[idx-1]
         
-        dx = self.robot_position['x'] - current_checkpoint['x']
-        dy = self.robot_position['y'] - current_checkpoint['y']
-        distance = np.sqrt(dx**2 + dy**2)
+            dx = self.robot_position['x'] - current_checkpoint['x']
+            dy = self.robot_position['y'] - current_checkpoint['y']
+            distance = np.sqrt(dx**2 + dy**2)
         
-        if distance < current_checkpoint['distance_threshold'] and not current_checkpoint['reached']:
-            current_checkpoint['reached'] = True
-            self.current_checkpoint_index += 1
-            
-            self.get_logger().info(
-                f"✅ Checkpoint {self.current_checkpoint_index} reached! "
-                f"Distance: {distance:.3f}m"
-            )
+            if distance < current_checkpoint['distance_threshold'] and not current_checkpoint['reached']:
+                if idx == 7 and self.current_checkpoint_index == 0: return
+                
+                current_checkpoint['reached'] = True
+                self.current_checkpoint_index += 1
+                
+                self.get_logger().info(
+                    f"✅ Checkpoint {idx} reached! "
+                    f"Distance: {distance:.3f}m"
+                )
 
-            if self.current_checkpoint_index == 1:
-                self.special_avoidance_mode = True
-                self.get_logger().info("🔶 Special avoidance mode ACTIVATED")
-            elif self.current_checkpoint_index == 2:
-                self.special_avoidance_mode = False
-                self.get_logger().info("✅ Special avoidance mode DEACTIVATED")
-            elif self.current_checkpoint_index == 3:
-                self.aruco_flag = True
-                self.get_logger().info("✅ AruCo flag ACTIVATED")
-            elif self.current_checkpoint_index == 4:
-                self.tunnel_mode = True
-                self.get_logger().info("✅ Tunnel mode ACTIVATED")
-            elif self.current_checkpoint_index == 5:
-                self.tunnel_mode = False
-                self.get_logger().info("✅ Tunnel mode DEACTIVATED")
-            elif self.current_checkpoint_index == 6:
-                self.finish = True
-                self.get_logger().info("✅ Finished mode ACTIVATED")
+                if idx == 1:
+                    self.special_avoidance_mode = True
+                    self.get_logger().info("🔶 Special avoidance mode ACTIVATED")
+                elif idx == 2:
+                    self.special_avoidance_mode = False
+                    self.right_flag = 1
+                    self.get_logger().info("✅ TURN RIGHT")
+                    self.get_logger().info("✅ Special avoidance mode DEACTIVATED")
+                elif idx == 3:
+                    self.left_flag = 1
+                    self.get_logger().info("✅ TURN LEFT")
+                elif idx == 4:
+                    self.aruco_flag = True
+                    self.get_logger().info("✅ AruCo flag ACTIVATED")
+                elif idx == 5:
+                    self.tunnel_mode = True
+                    self.get_logger().info("✅ Tunnel mode ACTIVATED")
+                elif idx == 6:
+                    self.tunnel_mode = False
+                    self.get_logger().info("✅ Tunnel mode DEACTIVATED")
+                elif idx == 7 and self.current_checkpoint_index > 0:
+                    self.finished = True
+                    self.get_logger().info("✅ Finished mode ACTIVATED")
 
 
     def _min_distance_in_window(self, pc: PointCloud2, window_height_ratio=0.5, width_margin_ratio=0.0):
@@ -392,11 +396,11 @@ class BaseNode(Node):
         center_u = width // 2
         obstacle_u_norm = (obstacle_u - center_u) / (width // 2)
         
-        self.get_logger().debug(
-            f"Obstacle: dist={min_dist:.3f}m, "
-            f"u={obstacle_u}, "
-            f"norm={obstacle_u_norm:.3f}"
-        )
+        # self.get_logger().debug(
+        #     f"Obstacle: dist={min_dist:.3f}m, "
+        #     f"u={obstacle_u}, "
+        #     f"norm={obstacle_u_norm:.3f}"
+        # )
         
         return min_dist, obstacle_u_norm
 
@@ -479,29 +483,31 @@ class BaseNode(Node):
         diff = y_norm - x_norm
         direction = diff / (abs(diff) + eps)  # -1 или +1
         
-        if self.special_avoidance_mode and self.current_checkpoint_index == 1:
-            left_boundary_factor = (lane_target_x - left_boundary) / (right_boundary - left_boundary)
-            right_boundary_factor = (right_boundary - lane_target_x) / (right_boundary - left_boundary)
-            boundary_factor = right_boundary_factor - left_boundary_factor
-            direction = boundary_factor / (abs(boundary_factor) + eps)
-        
-        # Основная формула
-        res_norm = x_norm - alpha_scaled * direction * x_norm * (1 - x_norm)
-        
-        res_norm = np.clip(res_norm, 0.0, 1.0)
+        if self.special_avoidance_mode:
+            # left_boundary_factor = (lane_target_x - left_boundary) / (right_boundary - left_boundary)
+            # right_boundary_factor = (right_boundary - lane_target_x) / (right_boundary - left_boundary)
+            # boundary_factor = right_boundary_factor - left_boundary_factor
+            # direction = boundary_factor / (abs(boundary_factor) + eps)
+            res_norm = 0.3
+            # self.special_avoidance_mode = False
+        else:
+            # Основная формула
+            res_norm = x_norm - alpha_scaled * direction * x_norm * (1 - x_norm)
+            
+            res_norm = np.clip(res_norm, 0.0, 1.0)
         
         # Преобразуем обратно в пиксели
         avoidance_x = left_boundary + res_norm * (right_boundary - left_boundary)
         
-        self.get_logger().info(
-            f"Avoidance formula: "
-            f"x_norm={x_norm:.2f}, "
-            f"y_norm={y_norm:.2f} (raw={self.obstacle_x_norm:.2f}), "
-            f"dist={self.min_distance:.2f}m, "
-            f"alpha={alpha_scaled:.2f}, "
-            f"res_norm={res_norm:.2f}, "
-            f"avoidance={avoidance_x:.0f}px"
-        )
+        # self.get_logger().info(
+        #     f"Avoidance formula: "
+        #     f"x_norm={x_norm:.2f}, "
+        #     f"y_norm={y_norm:.2f} (raw={self.obstacle_x_norm:.2f}), "
+        #     f"dist={self.min_distance:.2f}m, "
+        #     f"alpha={alpha_scaled:.2f}, "
+        #     f"res_norm={res_norm:.2f}, "
+        #     f"avoidance={avoidance_x:.0f}px"
+        # )
         
         return avoidance_x
 
@@ -661,12 +667,15 @@ class BaseNode(Node):
         yellow_mask = cv2.morphologyEx(yellow_mask, cv2.MORPH_CLOSE, kernel)
         white_mask = cv2.morphologyEx(white_mask, cv2.MORPH_CLOSE, kernel)
 
-        self.get_logger().info(f"❕ self.started {self.started}")
+        # self.get_logger().info(f"❕ self.started {self.started}")
 
         if self._detect_green_light(cv_image):
             self.started = True
 
-        self.started = True
+        if self._detect_green_light(cv_image) and self.current_checkpoint_index > 0:
+            self.finished = True
+
+        # self.started = True
         if self.started:
             # left_boundary, right_boundary = self._get_lane_boundaries(
             #     yellow_mask, white_mask, roi_w, roi_h
@@ -696,10 +705,19 @@ class BaseNode(Node):
                     self.x_target, left_boundary, right_boundary
                 )
 
-            self.get_logger().info(f"{"❕" if self.sign == 0 else "❗"} flag {self.flag_sign} | sign {self.sign} | area {area} | target {self.x_target} | tmp_trg {tmp_x_target}")
+            # self.get_logger().info(f"{"❕" if self.sign == 0 else "❗"} flag {self.flag_sign} | sign {self.sign} | area {area} | target {self.x_target} | tmp_trg {tmp_x_target}")
+            
 
             self.x_target = self.x_target - self.beta * (self.x_target - self.last_x_target)
             self.last_x_target = self.x_target
+
+            if self.right_flag > 0 and self.right_flag < 2:
+                self.x_target = 848
+                self.right_flag += 1
+            
+            if self.left_flag > 0 and self.left_flag < 2:
+                self.x_target = 0
+                self.left_flag += 1
 
             error_px = self.x_target - image_center_x
             norm_error = error_px / (w / 2.0)
@@ -709,7 +727,7 @@ class BaseNode(Node):
             ang = self.pid.compute(norm_error)
 
             if self.tunnel_mode:
-                ang -= 0.1
+                ang -= 0.03
 
             # Compute forward speed with penalties
             steering_penalty = min(abs(ang) * self.speed_reduction_factor, 1.0)
@@ -733,16 +751,16 @@ class BaseNode(Node):
             
             if self.min_distance is not None and self.min_distance < 0.05 and not self.tunnel_mode:
                 speed = 0.0
-                self.get_logger().warn("⚠️ VERY CLOSE OBSTACLE - STOPPING!")
+                # self.get_logger().warn("⚠️ VERY CLOSE OBSTACLE - STOPPING!")
                 # можно добавить логику движения назад
         
-            self.get_logger().info("🟢 START")
+            # self.get_logger().info("🟢 START")
             twist = Twist()
             twist.linear.x = float(speed)
             twist.angular.z = float(-ang)
             self.cmd_pub.publish(twist)
-        else:
-            self.get_logger().info("❌ STOP")
+        # else:
+            # self.get_logger().info("❌ STOP")
 
 
         # Debug image overlay
