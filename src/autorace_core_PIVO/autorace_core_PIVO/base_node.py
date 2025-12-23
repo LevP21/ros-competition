@@ -13,7 +13,7 @@ from cv_bridge import CvBridge, CvBridgeError
 import time
 
 from sensor_msgs_py.point_cloud2 import read_points
-
+from nav_msgs.msg import Odometry
 
 
 class PID:
@@ -86,6 +86,7 @@ class BaseNode(Node):
         # self.depth_processing_enabled = False
         self.last_depth_time = 0
         self.current_ros_time = None
+        self.first_time = None
 
         # self.depth_callback_group = ReentrantCallbackGroup()
         
@@ -170,6 +171,27 @@ class BaseNode(Node):
             10
         )
 
+         # Подписка на одометрию
+        self.odom_sub = self.create_subscription(
+            Odometry,
+            '/odom',
+            self.odom_callback,
+            10
+        )
+        
+        # Позиция робота
+        self.robot_position = {'x': 0.0, 'y': 0.0, 'z': 0.0}
+        # self.robot_orientation = {'roll': 0.0, 'pitch': 0.0, 'yaw': 0.0}
+        self.robot_pose_initialized = False
+        self.current_checkpoint_index = 0
+        self.special_avoidance_mode = False
+        self.checkpoints = [
+            {'x': 0.9540668182366147, 'y': 3.4298825170464355, 'z': 0.0, 'reached': False, 'distance_threshold': 0.2},
+            {'x': 0.6, 'y': 3.962901778906285, 'z': 0.0, 'reached': False, 'distance_threshold': 0.3}
+        ]
+
+
+
         self.yellow_lower = np.array([27, 120, 120])
         self.yellow_upper = np.array([35, 255, 255])
         self.white_lower = np.array([0, 0, 200])
@@ -205,6 +227,54 @@ class BaseNode(Node):
         self.x_target = 0
         self.flag_sign = 0
         self.sign = 0
+    
+    def odom_callback(self, msg: Odometry):
+        if self.current_checkpoint_index != -1:
+            self.robot_position['x'] = msg.pose.pose.position.x
+            self.robot_position['y'] = msg.pose.pose.position.y
+            self.robot_position['z'] = msg.pose.pose.position.z
+            self.get_logger().info(
+                f"robot_pose: {self.robot_position}"
+            )
+            self.robot_pose_initialized = True
+        
+            self._check_checkpoints_reached()
+        else:
+            self.get_logger().info(
+                f"низя"
+            )
+    
+    def _check_checkpoints_reached(self):
+        if self.robot_position is None:
+            return
+        
+        if self.current_checkpoint_index >= len(self.checkpoints):
+            self.special_avoidance_mode = False
+            self.current_checkpoint_index = -1
+            return
+        
+        current_checkpoint = self.checkpoints[self.current_checkpoint_index]
+        
+        dx = self.robot_position['x'] - current_checkpoint['x']
+        dy = self.robot_position['y'] - current_checkpoint['y']
+        dz = self.robot_position['z'] - current_checkpoint['z']
+        distance = np.sqrt(dx**2 + dy**2 + dz**2)
+        
+        if distance < current_checkpoint['distance_threshold'] and not current_checkpoint['reached']:
+            current_checkpoint['reached'] = True
+            self.current_checkpoint_index += 1
+            
+            self.get_logger().info(
+                f"✅ Checkpoint {self.current_checkpoint_index} reached! "
+                f"Distance: {distance:.3f}m"
+            )
+            
+            if self.current_checkpoint_index == 1:
+                self.special_avoidance_mode = True
+                self.get_logger().info("🔶 Special avoidance mode ACTIVATED")
+            elif self.current_checkpoint_index == 2:
+                self.special_avoidance_mode = False
+                self.get_logger().info("✅ Special avoidance mode DEACTIVATED")
 
         self.aruco_detected = False
         self.aruco_id = None
@@ -237,6 +307,8 @@ class BaseNode(Node):
     def clock_callback(self, msg: Clock):
         self.pid.update_time(msg)
         self.current_ros_time = msg.clock.sec + msg.clock.nanosec * 1e-9
+        if self.first_time == None:
+            self.first_time = self.current_ros_time
 
 
     def odom_callback(self, msg: Odometry):
@@ -332,13 +404,14 @@ class BaseNode(Node):
         cols = indices % width
         
         # Маска для высоты (верхние window_height_ratio%)
-        height_mask = rows < (height * window_height_ratio)
+        height_mask1 = rows < (height * window_height_ratio)
+        height_mask2 = rows > (height * 0.15)
         
         # Маска для ширины (отступы width_margin_ratio с каждой стороны)
         width_mask = (cols >= (width * width_margin_ratio)) & (cols < (width * (1 - width_margin_ratio)))
         
         # Общая маска окна
-        window_mask = height_mask & width_mask
+        window_mask = height_mask1 & width_mask & height_mask2
         
         # Берем только точки в окне (и их координаты)
         window_points = points_array[window_mask]
@@ -454,16 +527,20 @@ class BaseNode(Node):
         diff = y_norm - x_norm
         direction = diff / (abs(diff) + eps)  # -1 или +1
         
+        if self.special_avoidance_mode and self.current_checkpoint_index == 1:
+            left_boundary_factor = (lane_target_x - left_boundary) / (right_boundary - left_boundary)
+            right_boundary_factor = (right_boundary - lane_target_x) / (right_boundary - left_boundary)
+            boundary_factor = right_boundary_factor - left_boundary_factor
+            direction = boundary_factor / (abs(boundary_factor) + eps)
+        
         # Основная формула
         res_norm = x_norm - alpha_scaled * direction * x_norm * (1 - x_norm)
         
-        # 6. Ограничиваем результат 0..1
         res_norm = np.clip(res_norm, 0.0, 1.0)
         
-        # 7. Преобразуем обратно в пиксели
+        # Преобразуем обратно в пиксели
         avoidance_x = left_boundary + res_norm * (right_boundary - left_boundary)
         
-        # 9. Логирование
         self.get_logger().info(
             f"Avoidance formula: "
             f"x_norm={x_norm:.2f}, "
@@ -797,19 +874,6 @@ class BaseNode(Node):
                 cx = w * 0.3
 
         lane_width = white_x - yellow_x
-        # if lane_width > w * 0.6:  # Слишком широкая полоса
-        #     # Предполагаем, что одна из линий потеряна
-        #     if yellow_x < w * 0.2 and white_x > w * 0.8:
-        #         # Вероятно, есть обе линии, но мы далеко
-        #         pass  # Оставляем вычисленный центр
-        #     elif yellow_x < w * 0.2:
-        #         # Только желтая линия видна, белая потеряна
-        #         white_x = w - margin_px
-        #         cx = min(yellow_x + int(w * 0.2), int(w * 0.7))
-        #     elif white_x > w * 0.8:
-        #         # Только белая линия видна, желтая потеряна
-        #         yellow_x = margin_px
-        #         cx = max(white_x - int(w * 0.2), int(w * 0.3))
 
         # self.get_logger().info(
         #     f"Lane detection: yellow_x={yellow_x}, white_x={white_x}, "
